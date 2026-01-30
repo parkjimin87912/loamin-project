@@ -1,0 +1,251 @@
+import { useState } from 'react';
+import '../../App.css';
+
+// 타입 정의
+interface Material {
+    id: string;
+    name: string;
+    icon: string; // 이모지로 대체
+    amount: number;
+    price: number;
+}
+
+export default function GeneralReforgePage() {
+    // --- [상태 관리] ---
+    const [equipType, setEquipType] = useState<'armor' | 'weapon'>('armor');
+    const [targetLevel, setTargetLevel] = useState("10 → 11강");
+    const [includeGrowth, setIncludeGrowth] = useState(true);
+
+    // 재료 데이터 (스크린샷 참조)
+    const [materials, setMaterials] = useState<Material[]>([
+        { id: 'stone', name: '수호석', icon: '💎', amount: 750, price: 5 },
+        { id: 'leap', name: '돌파석', icon: '🔮', amount: 11, price: 8 },
+        { id: 'fusion', name: '아비도스 융화', icon: '🟤', amount: 7, price: 83 },
+        { id: 'shard', name: '운명의 파편', icon: '🧩', amount: 3000, price: 0.07 },
+        { id: 'gold', name: '골드', icon: '💰', amount: 970, price: 1 },
+        { id: 'breath', name: '빙하의 숨결', icon: '❄️', amount: 20, price: 261 },
+    ]);
+
+    // 재료 가격 변경 핸들러
+    const handlePriceChange = (id: string, newPrice: number) => {
+        setMaterials(materials.map(mat => mat.id === id ? { ...mat, price: newPrice } : mat));
+    };
+
+    // --- [계산 로직 (시뮬레이션)] ---
+    const costPerTry = materials.reduce((sum, mat) => sum + (mat.amount * mat.price), 0);
+
+    const avgTry = 4; // 평균 시도
+    const maxTry = 10; // 장기백 시도
+    const avgCost = costPerTry * avgTry;
+    const maxCost = costPerTry * maxTry;
+
+    return (
+        <div className="container">
+            {/* 서브 메뉴 탭 */}
+            <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border-color)', marginBottom: '0' }}>
+        <span style={{
+            color: '#fff', fontWeight: 'bold', fontSize: '15px',
+            borderBottom: '2px solid var(--text-accent)', paddingBottom: '19px', marginRight: '20px', cursor:'pointer'
+        }}>일반 재련</span>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '15px', marginRight: '20px', cursor:'pointer' }}>상급 재련</span>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '15px', cursor:'pointer' }}>아비도스</span>
+            </div>
+
+            <div className="reforge-container">
+
+                {/* ================= [좌측] 설정 사이드바 ================= */}
+                <aside className="sidebar-card">
+                    <div className="sidebar-title">재련 설정</div>
+                    <p className="sidebar-desc">재련 단계, 장비 타입, 재료 시세를 설정합니다.</p>
+
+                    {/* 1. 장비 타입 버튼 */}
+                    <div className="type-selector">
+                        <button
+                            className={`type-btn ${equipType === 'armor' ? 'active' : ''}`}
+                            onClick={() => setEquipType('armor')}
+                        >
+                            🛡️ 방어구
+                        </button>
+                        <button
+                            className={`type-btn ${equipType === 'weapon' ? 'active' : ''}`}
+                            onClick={() => setEquipType('weapon')}
+                        >
+                            ⚔️ 무기
+                        </button>
+                    </div>
+
+                    {/* 2. 단계 선택 */}
+                    <select
+                        className="custom-select"
+                        value={targetLevel}
+                        onChange={(e) => setTargetLevel(e.target.value)}
+                    >
+                        <option>10 → 11강</option>
+                        <option>11 → 12강</option>
+                        <option>12 → 13강</option>
+                    </select>
+
+                    {/* 3. 1회 재련 재료 리스트 */}
+                    <div className="sidebar-title" style={{fontSize:'13px', marginTop:'20px', marginBottom:'10px'}}>1회 재련 재료</div>
+                    <div className="material-list">
+                        {materials.map(mat => (
+                            <div key={mat.id} className="material-item">
+                                <span className="mat-name">{mat.icon} {mat.name}</span>
+                                <span className="mat-qty">{mat.amount.toLocaleString()}</span>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* 4. 토글 스위치 */}
+                    <div className="toggle-row">
+                        <div>
+                            <div style={{fontSize:'14px', fontWeight:'bold', color:'#fff', marginBottom:'4px'}}>성장 재료 포함</div>
+                            <div style={{fontSize:'12px', color:'var(--text-secondary)'}}>누적 재료에 파편/실링 합산</div>
+                        </div>
+                        <label className="switch">
+                            <input type="checkbox" checked={includeGrowth} onChange={() => setIncludeGrowth(!includeGrowth)} />
+                            <span className="slider"></span>
+                        </label>
+                    </div>
+
+                    {/* 5. 재료 시세 입력 */}
+                    <div className="sidebar-title" style={{fontSize:'13px', marginTop:'20px', marginBottom:'10px'}}>재료 시세 (골드)</div>
+                    <div>
+                        {materials.map(mat => (
+                            mat.id !== 'gold' && (
+                                <div key={mat.id} className="price-input-row">
+                  <span className="mat-name" style={{fontSize:'13px', color:'var(--text-secondary)'}}>
+                    {mat.icon} {mat.name}
+                  </span>
+                                    <input
+                                        type="number"
+                                        className="price-input"
+                                        value={mat.price}
+                                        onChange={(e) => handlePriceChange(mat.id, parseFloat(e.target.value))}
+                                    />
+                                </div>
+                            )
+                        ))}
+                    </div>
+                </aside>
+
+
+                {/* ================= [우측] 결과 컨텐츠 ================= */}
+                <main>
+
+                    {/* 1. 최적의 재련 조합 */}
+                    <section className="content-card">
+                        <div className="card-header">
+                            <span className="card-title">최적의 재련 조합</span>
+                            <span style={{
+                                background: '#2c2240', padding: '6px 12px', borderRadius: '4px', fontSize: '13px', color: '#a970ff', fontWeight:'bold', border:'1px solid #a970ff'
+                            }}>책O / 숨결X</span>
+                        </div>
+
+                        <div className="optimal-grid">
+                            {/* 평균 시도 */}
+                            <div className="stat-box">
+                                <div className="stat-label">평균 시도 횟수</div>
+                                <div className="stat-value">{avgTry}<span className="stat-unit">회</span></div>
+                                <div className="stat-gold">{avgCost.toLocaleString()} G</div>
+                            </div>
+                            {/* 장인의 기운 */}
+                            <div className="stat-box">
+                                <div className="stat-label">장인의 기운 (최대)</div>
+                                <div className="stat-value" style={{color:'#e1e1e8'}}>{maxTry}<span className="stat-unit">회</span></div>
+                                <div className="stat-gold" style={{color:'#ffcc00'}}>{maxCost.toLocaleString()} G</div>
+                            </div>
+                        </div>
+                        <p style={{ marginTop: '15px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                            모든 조합 중 평균 비용이 가장 적은 조합입니다.
+                        </p>
+                    </section>
+
+                    {/* 2. 누적 재료 소모량 */}
+                    <section className="content-card">
+                        <div className="card-header">
+                            <span className="card-title">누적 재료 소모량</span>
+                        </div>
+
+                        <div style={{ marginBottom: '30px' }}>
+                            <h4 style={{ color: '#fff', fontSize:'15px', margin: '0 0 15px 0' }}>장인의 기운 100% 기준 (최대)</h4>
+                            <div className="cumul-grid">
+                                {materials.map(mat => (
+                                    <div key={mat.id} className="cumul-item">
+                                        <span className="mat-name">{mat.icon} {mat.name}</span>
+                                        <span style={{fontWeight:'bold', color:'#fff'}}>{(mat.amount * maxTry).toLocaleString()}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 style={{ color: '#fff', fontSize:'15px', margin: '0 0 15px 0' }}>평균 시도 기준 (기댓값)</h4>
+                            <div className="cumul-grid">
+                                {materials.map(mat => (
+                                    <div key={mat.id} className="cumul-item">
+                                        <span className="mat-name">{mat.icon} {mat.name}</span>
+                                        <span style={{fontWeight:'bold', color:'#e1e1e8'}}>{(mat.amount * avgTry).toLocaleString()}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* 3. 상세 확률표 */}
+                    <section className="content-card">
+                        <div className="card-header">
+                            <span className="card-title">상세 확률표</span>
+                            <div style={{display:'flex', gap:'10px'}}>
+                                <span style={{fontSize:'12px', color:'#888', alignSelf:'center'}}>책O / 숨결X</span>
+                            </div>
+                        </div>
+
+                        <table className="prob-table">
+                            <thead>
+                            <tr>
+                                <th>시도</th>
+                                <th>기본 확률</th>
+                                <th>책 보너스</th>
+                                <th>숨결 보너스</th>
+                                <th>시도 확률</th>
+                                <th>누적 성공</th>
+                                <th>장기</th>
+                                <th>예상 비용</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {Array.from({ length: maxTry }, (_, i) => {
+                                const tryNum = i + 1;
+                                const baseRate = 10;
+                                const bookBonus = 10; // 책 효과
+                                const totalRate = baseRate + bookBonus;
+                                const artisan = Math.min(100, (tryNum / maxTry) * 100);
+                                const isMax = tryNum === maxTry;
+
+                                return (
+                                    <tr key={tryNum} className={isMax ? "highlight-row" : ""}>
+                                        <td className={isMax ? "text-accent" : ""}>{tryNum}트 {isMax && '★'}</td>
+                                        <td>{baseRate.toFixed(2)}%</td>
+                                        <td className="text-accent">+{bookBonus.toFixed(2)}%</td>
+                                        <td style={{color: '#555'}}>-</td>
+                                        <td>{totalRate.toFixed(2)}%</td>
+                                        <td>{(100 - (100 / (tryNum+1))).toFixed(2)}%</td>
+                                        <td className={isMax ? "text-blue" : ""}>{artisan.toFixed(2)}%</td>
+                                        <td>{(costPerTry * tryNum).toLocaleString()} G</td>
+                                    </tr>
+                                );
+                            })}
+                            </tbody>
+                        </table>
+
+                        <div style={{ marginTop: '15px', fontSize: '13px', color: 'var(--text-secondary)', display:'flex', alignItems:'center', gap:'5px' }}>
+                            <span className="text-accent">★</span> 파란색 행은 장인의 기운 100% 도달로 보장 성공한 시점입니다.
+                        </div>
+                    </section>
+
+                </main>
+            </div>
+        </div>
+    );
+}
