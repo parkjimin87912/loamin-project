@@ -38,9 +38,10 @@ public class MarketDataBatchConfig {
                 .tasklet((contribution, chunkContext) -> {
                     log.info(">>> 로스트아크 마켓 데이터 수집 시작");
 
-                    // [수정 완료] 인자 3개 전달: (카테고리코드, 아이템명, 티어)
-                    // itemName=null, tier=null (서비스에서 기본값 3으로 처리됨)
-                    List<LostArkMarketItemDto> items = lostArkApiService.searchItems(50010, null, null);
+                    // [수정] searchItems 메서드 시그니처 변경에 맞춰 인자 4개 전달
+                    // (카테고리코드, 아이템명, 티어, 등급)
+                    // itemName=null, tier=null, grade=null
+                    List<LostArkMarketItemDto> items = lostArkApiService.searchItems(50010, null, null, null);
 
                     log.info(">>> 수집된 아이템 개수: {}", items.size());
 

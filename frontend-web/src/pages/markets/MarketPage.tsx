@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import MarketCategoryHeader from '../../components/MarketCategoryHeader';
 import '../../App.css';
 
 interface MarketItem {
@@ -27,20 +28,23 @@ export default function MarketPage() {
     // 티어 상태 (기본값 4)
     const [tier, setTier] = useState<number>(4);
 
+    // 서브 탭 정의
     const subTabsMap: { [key: string]: string[] } = {
         reforge: ["재련 재료", "재련 보조 재료"],
-        life: ["고고학", "낚시", "채광", "벌목", "채집", "수렵"],
-        engraving: ["전설 각인서", "유물 각인서"],
-        gem: ["3티어 보석", "4티어 보석"],
+        life: ["전체", "고고학", "낚시", "채광", "벌목", "채집", "수렵", "기타"],
+        engraving: [], // 각인서는 서브 탭 없음
+        gem: ["전체", "7레벨", "8레벨", "9레벨", "10레벨"], // [수정] 보석 탭 구성 변경
         battle: ["회복형", "공격형", "기능성", "버프형"],
     };
 
-    const currentTabs = subTabsMap[categoryId || "reforge"] || ["전체"];
-    const [activeSubTab, setActiveSubTab] = useState(currentTabs[0]);
+    const currentTabs = subTabsMap[categoryId || "reforge"] || [];
+    const [activeSubTab, setActiveSubTab] = useState(currentTabs.length > 0 ? currentTabs[0] : "");
 
+    // 카테고리 변경 시 첫 번째 탭으로 초기화
     useEffect(() => {
         if (categoryId && subTabsMap[categoryId]) {
-            setActiveSubTab(subTabsMap[categoryId][0]);
+            const tabs = subTabsMap[categoryId];
+            setActiveSubTab(tabs.length > 0 ? tabs[0] : "");
         }
     }, [categoryId]);
 
@@ -61,13 +65,22 @@ export default function MarketPage() {
             setItems([]);
 
             try {
-                const response = await axios.get(`http://localhost:8080/api/v1/market/items`, {
-                    params: {
-                        category: categoryId,
-                        subCategory: activeSubTab,
-                        tier: tier
-                    }
-                });
+                const params: any = {
+                    category: categoryId,
+                    tier: tier
+                };
+
+                if (categoryId === 'life' && activeSubTab === '전체') {
+                    // 생활 재료의 '전체' 탭인 경우 subCategory 파라미터 제외
+                } else if (categoryId === 'gem' && activeSubTab === '전체') {
+                    // [추가] 보석의 '전체' 탭인 경우 subCategory 파라미터 제외
+                } else if (categoryId === 'engraving') {
+                    // 각인서는 서브 카테고리 없음
+                } else {
+                    params.subCategory = activeSubTab;
+                }
+
+                const response = await axios.get(`http://localhost:8080/api/v1/market/items`, { params });
 
                 if (Array.isArray(response.data)) {
                     setItems(response.data);
@@ -87,7 +100,6 @@ export default function MarketPage() {
         }
     }, [categoryId, activeSubTab, tier]);
 
-    // [기존] 등급별 텍스트 색상
     const getGradeColor = (grade: string) => {
         switch (grade) {
             case '고급': return '#81c784';
@@ -100,24 +112,25 @@ export default function MarketPage() {
         }
     };
 
-    // [추가] 등급별 은은한 배경 색상 (투명도 0.15 적용)
     const getGradeBackgroundColor = (grade: string) => {
         switch (grade) {
-            case '고대': return 'rgba(231, 185, 255, 0.15)'; // 은은한 고대색
-            case '유물': return 'rgba(255, 138, 101, 0.15)'; // 은은한 유물색
-            case '전설': return 'rgba(255, 183, 77, 0.15)';  // 은은한 전설색
-            case '영웅': return 'rgba(186, 104, 200, 0.15)'; // 은은한 영웅색
-            case '희귀': return 'rgba(79, 195, 247, 0.15)';  // 은은한 희귀색
-            case '고급': return 'rgba(129, 199, 132, 0.15)'; // 은은한 고급색
-            default: return 'transparent'; // 기본은 투명
+            case '고대': return 'rgba(231, 185, 255, 0.15)';
+            case '유물': return 'rgba(255, 138, 101, 0.15)';
+            case '전설': return 'rgba(255, 183, 77, 0.15)';
+            case '영웅': return 'rgba(186, 104, 200, 0.15)';
+            case '희귀': return 'rgba(79, 195, 247, 0.15)';
+            case '고급': return 'rgba(129, 199, 132, 0.15)';
+            default: return 'transparent';
         }
     };
 
     return (
-        <div className="container" style={{ marginTop: '30px' }}>
+        <div className="container">
+            <MarketCategoryHeader />
+
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    {currentTabs.map(tab => (
+                    {currentTabs.length > 0 && currentTabs.map(tab => (
                         <button
                             key={tab}
                             onClick={() => setActiveSubTab(tab)}
@@ -133,15 +146,18 @@ export default function MarketPage() {
                     ))}
                 </div>
 
-                <select
-                    className="custom-select"
-                    style={{ width: '100px', marginBottom: 0, padding:'8px' }}
-                    value={tier}
-                    onChange={(e) => setTier(Number(e.target.value))}
-                >
-                    <option value={4}>티어 4</option>
-                    <option value={3}>티어 3</option>
-                </select>
+                {/* [수정] 생활 재료, 각인서 탭일 때는 티어 선택 박스 숨김 */}
+                {categoryId !== 'life' && categoryId !== 'engraving' && (
+                    <select
+                        className="custom-select"
+                        style={{ width: '100px', marginBottom: 0, padding:'8px' }}
+                        value={tier}
+                        onChange={(e) => setTier(Number(e.target.value))}
+                    >
+                        <option value={4}>티어 4</option>
+                        <option value={3}>티어 3</option>
+                    </select>
+                )}
             </div>
 
             <section className="content-card" style={{ padding: '0', overflow: 'hidden', minHeight: '400px' }}>
@@ -171,17 +187,15 @@ export default function MarketPage() {
                         <tr><td colSpan={7} style={{ padding: '60px', textAlign: 'center', color: '#666' }}>표시할 아이템이 없습니다.</td></tr>
                     ) : (
                         items.map((item) => {
-                            // [추가] 각 아이템의 등급에 맞는 배경색 가져오기
                             const bgColor = getGradeBackgroundColor(item.grade);
                             return (
                                 <tr
                                     key={item.id}
-                                    // [수정] 스타일에 배경색(background) 적용
                                     style={{
                                         cursor: 'pointer',
                                         transition: 'background 0.2s',
-                                        background: bgColor, // <-- 여기에 적용됨
-                                        borderBottom: '1px solid rgba(255,255,255,0.05)' // 구분선 추가
+                                        background: bgColor,
+                                        borderBottom: '1px solid rgba(255,255,255,0.05)'
                                     }}
                                     className="market-row"
                                     onClick={() => navigate(`/market/detail/${item.name}`)}

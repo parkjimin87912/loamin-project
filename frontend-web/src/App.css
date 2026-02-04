@@ -35,7 +35,7 @@ html, body {
   background-color: var(--bg-app);
   color: var(--text-primary);
   font-family: 'Pretendard', sans-serif;
-  overflow-x: hidden;
+  overflow-y: scroll; /* 스크롤바 항상 표시 */
 }
 
 /* [중요] 리액트 루트 엘리먼트 꽉 채우기 */
@@ -44,6 +44,23 @@ html, body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+/* --- 스크롤바 커스텀 --- */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-app);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 6px;
+  border: 3px solid var(--bg-app); /* 썸 주변에 여백 효과 */
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3f4052;
 }
 
 /* --- 레이아웃 --- */
@@ -97,9 +114,21 @@ html, body {
   border-bottom: 1px solid var(--border-color);
   width: 100%;
 }
-.nav-list { display: flex; list-style: none; margin: 0; padding: 0; }
+.nav-list {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+.nav-list li {
+  flex: 1;
+}
 .nav-item {
-  padding: 15px 25px;
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 15px 0;
   cursor: pointer;
   color: var(--text-secondary);
   font-weight: 600;

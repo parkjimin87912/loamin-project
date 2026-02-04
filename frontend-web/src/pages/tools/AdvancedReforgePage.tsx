@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import ToolsHeader from '../../components/ToolsHeader';
 import '../../App.css';
 
 interface AdvMaterial {
@@ -11,8 +11,6 @@ interface AdvMaterial {
 }
 
 export default function AdvancedReforgePage() {
-    const navigate = useNavigate();
-
     // --- [상태 관리] ---
     const [stageRange, setStageRange] = useState("0-10");
     const [equipType, setEquipType] = useState<'armor' | 'weapon'>('armor');
@@ -45,13 +43,7 @@ export default function AdvancedReforgePage() {
     return (
         <div className="container">
             {/* 상단 탭 (통일됨) */}
-            <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border-color)', marginBottom: '30px', display: 'flex', gap: '20px', overflowX: 'auto' }}>
-                <span onClick={() => navigate('/tools/general')} style={{ color: 'var(--text-secondary)', fontSize: '15px', cursor: 'pointer' }}>일반 재련</span>
-                <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '15px', borderBottom: '2px solid var(--text-accent)', paddingBottom: '19px', cursor: 'pointer' }}>상급 재련</span>
-                <span onClick={() => navigate('/tools/abydos')} style={{ color: 'var(--text-secondary)', fontSize: '15px', cursor: 'pointer' }}>아비도스 쌀산기</span>
-                <span onClick={() => navigate('/tools/craft')} style={{ color: 'var(--text-secondary)', fontSize: '15px', cursor: 'pointer' }}>아비도스 제작</span>
-                <span onClick={() => navigate('/tools/auction')} style={{ color: 'var(--text-secondary)', fontSize: '15px', cursor: 'pointer' }}>경매 계산기</span>
-            </div>
+            <ToolsHeader />
 
             <div className="reforge-container">
                 {/* 좌측 사이드바 */}

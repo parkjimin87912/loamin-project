@@ -22,13 +22,14 @@ public class LostArkApiService {
     @Value("${lostark.api.key}")
     private String apiKey;
 
-    private static final String API_URL = "https://developer-lostark.game.onstove.com/markets/items";
+    private static final String MARKET_API_URL = "https://developer-lostark.game.onstove.com/markets/items";
+    private static final String AUCTION_API_URL = "https://developer-lostark.game.onstove.com/auctions/items";
     private final RestTemplate restTemplate = new RestTemplate();
 
-    public List<LostArkMarketItemDto> searchItems(int categoryCode, String itemName, Integer tier) {
+    // [기존] 거래소 아이템 검색
+    public List<LostArkMarketItemDto> searchItems(int categoryCode, String itemName, Integer tier, String grade) {
         List<LostArkMarketItemDto> allItems = new ArrayList<>();
         int pageNo = 1;
-        // 최대 5페이지까지 조회 (보통 한 페이지에 10개이므로 50개면 충분)
         final int MAX_PAGES = 5;
 
         try {
@@ -39,10 +40,18 @@ public class LostArkApiService {
             while (pageNo <= MAX_PAGES) {
                 Map<String, Object> body = new HashMap<>();
                 body.put("Sort", "CURRENT_MIN_PRICE");
-                body.put("SortCondition", "DESC"); // 비싼 순
+                body.put("SortCondition", "DESC");
                 body.put("CategoryCode", categoryCode);
-                body.put("ItemTier", tier != null ? tier : 3);
-                body.put("PageNo", pageNo); // 페이지 번호 변경
+                
+                if (categoryCode != 90000 && categoryCode != 40000) {
+                    body.put("ItemTier", tier != null ? tier : 3);
+                }
+                
+                if (grade != null && !grade.isEmpty()) {
+                    body.put("ItemGrade", grade);
+                }
+                
+                body.put("PageNo", pageNo);
 
                 if (itemName != null && !itemName.isEmpty() && !itemName.equals("전체")) {
                     body.put("ItemName", itemName);
@@ -50,30 +59,84 @@ public class LostArkApiService {
 
                 HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
 
-                ResponseEntity<Map> response = restTemplate.postForEntity(API_URL, request, Map.class);
+                ResponseEntity<Map> response = restTemplate.postForEntity(MARKET_API_URL, request, Map.class);
 
                 if (response.getBody() == null || !response.getBody().containsKey("Items")) {
-                    break; // 아이템이 없으면 중단
+                    break;
                 }
 
                 List<Map<String, Object>> rawItems = (List<Map<String, Object>>) response.getBody().get("Items");
 
-                // 데이터가 비어있으면 루프 종료
                 if (rawItems == null || rawItems.isEmpty()) {
                     break;
                 }
 
-                // DTO 변환 후 리스트에 추가
                 List<LostArkMarketItemDto> pageItems = rawItems.stream()
                         .map(this::convertToDto)
                         .collect(Collectors.toList());
                 allItems.addAll(pageItems);
 
-                pageNo++; // 다음 페이지로
+                pageNo++;
             }
 
         } catch (Exception e) {
-            log.error("로스트아크 API 호출 실패: {}", e.getMessage());
+            log.error("로스트아크 거래소 API 호출 실패: {}", e.getMessage());
+        }
+
+        return allItems;
+    }
+
+    // [추가] 경매장 아이템 검색 (보석용)
+    public List<LostArkMarketItemDto> searchAuctionItems(int categoryCode, String itemName, Integer tier) {
+        List<LostArkMarketItemDto> allItems = new ArrayList<>();
+        int pageNo = 1;
+        final int MAX_PAGES = 5; // 보석은 매물이 많을 수 있으니 적당히 제한
+
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authorization", "bearer " + apiKey);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            while (pageNo <= MAX_PAGES) {
+                Map<String, Object> body = new HashMap<>();
+                body.put("Sort", "BUY_PRICE"); // 즉시 구매가 기준
+                body.put("SortCondition", "ASC"); // 싼 순서 (최저가)
+                body.put("CategoryCode", categoryCode);
+                body.put("ItemTier", tier != null ? tier : 3);
+                body.put("PageNo", pageNo);
+
+                // [수정] itemName이 null이거나 "전체"인 경우, 보석(210000)은 "보석"이라는 키워드로 검색해야 전체 조회가 됨
+                // 경매장 API는 ItemName이 없으면 검색이 안 되는 경우가 있음 (특히 보석)
+                if (itemName != null && !itemName.isEmpty() && !itemName.equals("전체")) {
+                    body.put("ItemName", itemName);
+                } else if (categoryCode == 210000) {
+                    body.put("ItemName", "보석"); // 보석 전체 조회 시 "보석" 키워드 추가
+                }
+
+                HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+
+                ResponseEntity<Map> response = restTemplate.postForEntity(AUCTION_API_URL, request, Map.class);
+
+                if (response.getBody() == null || !response.getBody().containsKey("Items")) {
+                    break;
+                }
+
+                List<Map<String, Object>> rawItems = (List<Map<String, Object>>) response.getBody().get("Items");
+
+                if (rawItems == null || rawItems.isEmpty()) {
+                    break;
+                }
+
+                List<LostArkMarketItemDto> pageItems = rawItems.stream()
+                        .map(this::convertAuctionToDto)
+                        .collect(Collectors.toList());
+                allItems.addAll(pageItems);
+
+                pageNo++;
+            }
+
+        } catch (Exception e) {
+            log.error("로스트아크 경매장 API 호출 실패: {}", e.getMessage());
         }
 
         return allItems;
@@ -103,6 +166,42 @@ public class LostArkApiService {
                 recentPrice,
                 (int) avgPrice,
                 changeRate,
+                iconUrl
+        );
+    }
+
+    // [추가] 경매장 데이터 DTO 변환
+    private LostArkMarketItemDto convertAuctionToDto(Map<String, Object> raw) {
+        String name = (String) raw.get("Name");
+        String grade = (String) raw.get("Grade");
+        String iconUrl = (String) raw.get("Icon");
+        
+        Map<String, Object> auctionInfo = (Map<String, Object>) raw.get("AuctionInfo");
+        int minPrice = 0;
+        int startPrice = 0;
+        
+        if (auctionInfo != null) {
+            // 즉시 구매가가 있으면 사용, 없으면 시작가 사용 (보통 즉구가 기준)
+            Object buyPriceObj = auctionInfo.get("BuyPrice");
+            Object startPriceObj = auctionInfo.get("StartPrice");
+            
+            minPrice = buyPriceObj != null ? (int) buyPriceObj : 0;
+            startPrice = startPriceObj != null ? (int) startPriceObj : 0;
+            
+            // 즉시 구매가가 0이면(매물이 없거나 입찰 전용) 시작가로 표시할 수도 있음
+            if (minPrice == 0) minPrice = startPrice;
+        }
+
+        // 경매장은 전일 평균가, 최근 거래가 정보가 없으므로 0 처리
+        return new LostArkMarketItemDto(
+                UUID.randomUUID().toString(),
+                name,
+                grade,
+                1, // 보석은 1개 단위
+                minPrice,
+                0, // 최근 거래가 없음
+                0, // 전일 평균가 없음
+                0, // 등락률 없음
                 iconUrl
         );
     }

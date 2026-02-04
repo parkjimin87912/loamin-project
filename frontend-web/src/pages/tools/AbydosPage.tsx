@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ToolsHeader from '../../components/ToolsHeader';
 import '../../App.css';
 
 type LifeCategory = 'logging' | 'excavating' | 'fishing' | 'foraging' | 'mining' | 'hunting';
@@ -73,13 +74,7 @@ export default function AbydosPage() {
     return (
         <div className="container">
             {/* 상단 탭 */}
-            <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border-color)', marginBottom: '30px', display: 'flex', gap: '20px', overflowX: 'auto' }}>
-                <span onClick={() => navigate('/tools/general')} style={{ color: 'var(--text-secondary)', fontSize: '15px', cursor: 'pointer' }}>일반 재련</span>
-                <span onClick={() => navigate('/tools/advanced')} style={{ color: 'var(--text-secondary)', fontSize: '15px', cursor: 'pointer' }}>상급 재련</span>
-                <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '15px', borderBottom: '2px solid var(--text-accent)', paddingBottom: '19px', cursor: 'pointer' }}>아비도스 쌀산기</span>
-                <span onClick={() => navigate('/tools/craft')} style={{ color: 'var(--text-secondary)', fontSize: '15px', cursor: 'pointer' }}>아비도스 제작</span>
-                <span onClick={() => navigate('/tools/auction')} style={{ color: 'var(--text-secondary)', fontSize: '15px', cursor: 'pointer' }}>경매 계산기</span>
-            </div>
+            <ToolsHeader />
 
             <div style={{ paddingBottom: '50px' }}>
                 {/* 설정 박스 */}
