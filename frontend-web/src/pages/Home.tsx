@@ -8,8 +8,8 @@ export default function Home() {
     const utilityTools = [
         { name: "일반 재련", icon: "🔨", path: "/tools/general" },
         { name: "상급 재련", icon: "✨", path: "/tools/advanced" },
-        { name: "아비도스", icon: "🎲", path: "/tools/abydos" },
-        { name: "쌀산기", icon: "🍚", path: "/tools/rice" },
+        { name: "아비도스 쌀산기", icon: "🎲", path: "/tools/abydos" },
+        { name: "아미도스 제작 계산기", icon: "🍚", path: "/tools/rice" },
         { name: "경매 계산기", icon: "💰", path: "/tools/auction" },
     ];
 

@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import PriceChart from "../../components/PriceChart";
-import '../App.css';
+import '../../App.css';
 
 export default function ItemDetailPage() {
     const { itemName } = useParams(); // URL에서 아이템 이름 가져오기

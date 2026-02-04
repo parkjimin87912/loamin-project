@@ -1,7 +1,6 @@
 package dev.j2m2n.backendserver.controllers;
 
-import dev.j2m2n.backendserver.dtos.PredictionDto;
-import dev.j2m2n.backendserver.services.MarketDataService;
+import dev.j2m2n.backendserver.services.LostArkApiService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -11,36 +10,18 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/market")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "http://localhost:5173") // 프론트엔드 주소 허용
 public class MarketController {
 
-    private final MarketDataService marketDataService;
+    private final LostArkApiService lostArkApiService;
 
-    // 1. 아이템 시세 기록 조회
-    // GET /api/v1/market/history/유물 원한 각인서
-    @GetMapping("/history/{itemName}")
-    public ResponseEntity<List<MarketDataService.MarketPriceHistoryDto>> getItemHistory(
-            @PathVariable String itemName
+    // [신규] 실시간 로아 API 데이터 조회
+    // 예: GET http://localhost:8080/api/v1/market/real-time/50010 (50010은 재련재료 코드)
+    @GetMapping("/real-time/{categoryCode}")
+    public ResponseEntity<List<LostArkApiService.MarketItemDto>> getRealTimeMarket(
+            @PathVariable int categoryCode
     ) {
-        var result = marketDataService.getPriceHistory(itemName);
-        return ResponseEntity.ok(result);
-    }
-
-    // 2. 수집된 아이템 목록 조회
-    // GET /api/v1/market/items
-    @GetMapping("/items")
-    public ResponseEntity<List<String>> getAllItemNames() {
-        var result = marketDataService.getAllItemNames();
-        return ResponseEntity.ok(result);
-    }
-
-    // 3. 시세 예측 조회 (자바 엔진)
-    // GET /api/v1/market/predict/유물 원한 각인서
-    @GetMapping("/predict/{itemName}")
-    public ResponseEntity<PredictionDto> getPrediction(
-            @PathVariable String itemName
-    ) {
-        var result = marketDataService.getPrediction(itemName);
+        List<LostArkApiService.MarketItemDto> result = lostArkApiService.searchItems(categoryCode);
         return ResponseEntity.ok(result);
     }
 }
