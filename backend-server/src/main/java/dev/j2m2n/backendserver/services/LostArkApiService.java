@@ -39,11 +39,20 @@ public class LostArkApiService {
 
             while (pageNo <= MAX_PAGES) {
                 Map<String, Object> body = new HashMap<>();
-                body.put("Sort", "CURRENT_MIN_PRICE");
-                body.put("SortCondition", "DESC");
+                
+                // [수정] 배틀 아이템(60000번대)은 전일 평균가 기준 내림차순(DESC)
+                if (categoryCode / 10000 == 6) {
+                    body.put("Sort", "YDAY_AVG_PRICE");
+                    body.put("SortCondition", "DESC");
+                } else {
+                    body.put("Sort", "CURRENT_MIN_PRICE");
+                    body.put("SortCondition", "ASC");
+                }
+
                 body.put("CategoryCode", categoryCode);
                 
-                if (categoryCode != 90000 && categoryCode != 40000) {
+                // 생활(90000), 각인서(40000), 배틀아이템(60000~)은 티어 필터 제외
+                if (categoryCode != 90000 && categoryCode != 40000 && categoryCode / 10000 != 6) {
                     body.put("ItemTier", tier != null ? tier : 3);
                 }
                 

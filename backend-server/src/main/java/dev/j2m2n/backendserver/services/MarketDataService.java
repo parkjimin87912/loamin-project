@@ -4,6 +4,8 @@ import dev.j2m2n.backendserver.dtos.LostArkMarketItemDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -42,24 +44,34 @@ public class MarketDataService {
             categoryCode = 90000;
             tier = null;
         } else if ("battle".equals(category)) {
-            categoryCode = 60000;
+            if ("회복".equals(subCategory)) {
+                categoryCode = 60010;
+            } else if ("공격".equals(subCategory)) {
+                categoryCode = 60020;
+            } else if ("기능".equals(subCategory)) {
+                categoryCode = 60030;
+            } else if ("버프".equals(subCategory)) {
+                categoryCode = 60040;
+            } else {
+                categoryCode = 60000;
+            }
+            tier = null; // [수정] 배틀 아이템은 티어 구분 없음 (API 호출 시 null로 전달하여 필터 제외)
         }
 
         // 2. API 호출
         List<LostArkMarketItemDto> items;
         if (isAuction) {
-            // [추가] 경매장 API 호출 (보석)
-            items = lostArkApiService.searchAuctionItems(categoryCode, itemName, tier);
-            
-            // [추가] 보석 '전체' 탭일 경우 7레벨 이상만 필터링
+            // [수정] 보석 '전체' 탭일 경우 7~10레벨 보석을 각각 조회하여 합침
             if ("gem".equals(category) && (subCategory == null || subCategory.equals("전체"))) {
-                items = items.stream()
-                        .filter(item -> {
-                            String name = item.getName();
-                            // "10레벨", "9레벨", "8레벨", "7레벨" 문자열 포함 여부 확인
-                            return name.contains("10레벨") || name.contains("9레벨") || name.contains("8레벨") || name.contains("7레벨");
-                        })
-                        .collect(Collectors.toList());
+                items = new ArrayList<>();
+                String[] levels = {"10레벨", "9레벨", "8레벨", "7레벨"};
+                for (String level : levels) {
+                    items.addAll(lostArkApiService.searchAuctionItems(categoryCode, level, tier));
+                }
+                // [추가] 전체 조회 시 최저가 순으로 정렬
+                items.sort(Comparator.comparingInt(LostArkMarketItemDto::getMinPrice));
+            } else {
+                items = lostArkApiService.searchAuctionItems(categoryCode, itemName, tier);
             }
         } else {
             // 기존 거래소 API 호출
