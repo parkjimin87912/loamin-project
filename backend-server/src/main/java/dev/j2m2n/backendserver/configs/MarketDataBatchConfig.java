@@ -1,5 +1,6 @@
 package dev.j2m2n.backendserver.configs;
 
+import dev.j2m2n.backendserver.dtos.LostArkMarketItemDto;
 import dev.j2m2n.backendserver.services.LostArkApiService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,17 +38,14 @@ public class MarketDataBatchConfig {
                 .tasklet((contribution, chunkContext) -> {
                     log.info(">>> 로스트아크 마켓 데이터 수집 시작");
 
-                    // [수정 포인트] getMarketItems -> searchItems 로 변경
-                    // 재련 재료 카테고리 코드: 50010
-                    List<LostArkApiService.MarketItemDto> items = lostArkApiService.searchItems(50010);
+                    // [수정 완료] 인자 3개 전달: (카테고리코드, 아이템명, 티어)
+                    // itemName=null, tier=null (서비스에서 기본값 3으로 처리됨)
+                    List<LostArkMarketItemDto> items = lostArkApiService.searchItems(50010, null, null);
 
                     log.info(">>> 수집된 아이템 개수: {}", items.size());
 
-                    // 여기서 DB에 저장하는 로직 등을 추가할 수 있습니다.
-                    // 예: itemRepository.saveAll(items.map(this::toEntity));
-
-                    for (LostArkApiService.MarketItemDto item : items) {
-                        log.info("아이템: {} (최저가: {} G)", item.getName(), item.getCurrentMinPrice());
+                    for (LostArkMarketItemDto item : items) {
+                        log.info("아이템: {} (최저가: {} G)", item.getName(), item.getMinPrice());
                     }
 
                     return RepeatStatus.FINISHED;

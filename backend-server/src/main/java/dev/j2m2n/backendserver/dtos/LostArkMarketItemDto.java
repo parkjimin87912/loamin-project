@@ -1,27 +1,20 @@
 package dev.j2m2n.backendserver.dtos;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Getter
-@Setter
-@ToString
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class LostArkMarketItemDto {
-    // 로스트아크 API의 JSON 키값과 정확히 일치해야 합니다.
-    @JsonProperty("Name")
+    private String id;
     private String name;
-
-    @JsonProperty("Grade")
     private String grade;
-
-    @JsonProperty("YDayAvgPrice")
-    private Double yDayAvgPrice;
-
-    @JsonProperty("CurrentMinPrice")
-    private Integer currentMinPrice;
-
-    @JsonProperty("TradeCount")
-    private Integer tradeCount;
+    private int bundle;
+    private int minPrice;
+    private int recentPrice;
+    private int avgPrice;
+    private double changeRate;
+    private String icon;
 }

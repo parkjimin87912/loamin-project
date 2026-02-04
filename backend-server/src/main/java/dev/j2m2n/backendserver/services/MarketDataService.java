@@ -1,57 +1,39 @@
 package dev.j2m2n.backendserver.services;
 
-import dev.j2m2n.backendserver.dtos.PredictionDto;
-import dev.j2m2n.backendserver.entities.ItemMeta;
-import dev.j2m2n.backendserver.entities.MarketPriceHistory;
-import dev.j2m2n.backendserver.repositories.ItemMetaRepository;
-import dev.j2m2n.backendserver.repositories.MarketPriceHistoryRepository;
+import dev.j2m2n.backendserver.dtos.LostArkMarketItemDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class MarketDataService {
 
-    private final MarketPriceHistoryRepository marketPriceHistoryRepository;
-    private final ItemMetaRepository itemMetaRepository; // [필수] 아이템 이름 조회용
-    private final PredictionService predictionService;   // [필수] 예측 엔진
+    private final LostArkApiService lostArkApiService;
 
-    // 1. 시세 기록 조회
-    public List<MarketPriceHistoryDto> getPriceHistory(String itemName) {
-        List<MarketPriceHistory> histories = marketPriceHistoryRepository.findByItem_ItemNameOrderByCollectedAtAsc(itemName);
-        return histories.stream()
-                .map(h -> new MarketPriceHistoryDto(
-                        h.getPrice(),
-                        h.getTradeCount(),
-                        h.getCollectedAt().toString()
-                ))
-                .collect(Collectors.toList());
+    public List<LostArkMarketItemDto> getItems(String category, String subCategory, Integer tier) {
+        int categoryCode = 50010; // 기본값: 재련 재료
+        String itemName = null;
+
+        // 1. 카테고리 코드 매핑
+        if ("reforge".equals(category)) {
+            if ("재련 보조 재료".equals(subCategory)) {
+                categoryCode = 50020; // [수정] 재련 보조 재료 (야금술, 재봉술, 숨결)
+            } else {
+                categoryCode = 50010; // 재련 재료 (파괴석, 수호석, 돌파석, 융화재료)
+            }
+        } else if ("gem".equals(category)) {
+            categoryCode = 210000; // 보석
+        } else if ("engraving".equals(category)) {
+            categoryCode = 40000; // 각인서
+        } else if ("life".equals(category)) {
+            categoryCode = 90000; // 생활 재료
+        } else if ("battle".equals(category)) {
+            categoryCode = 60000; // 배틀 아이템
+        }
+
+        // 3. 실제 API 호출
+        return lostArkApiService.searchItems(categoryCode, itemName, tier);
     }
-
-    // 2. [이게 없어서 에러 발생] 저장된 아이템 이름 목록 조회
-    public List<String> getAllItemNames() {
-        return itemMetaRepository.findAll().stream()
-                .map(ItemMeta::getItemName)
-                .collect(Collectors.toList());
-    }
-
-    // 3. 시세 예측 (자바 엔진 사용)
-    public PredictionDto getPrediction(String itemName) {
-        // DB에서 가격 데이터만 추출
-        List<MarketPriceHistory> histories = marketPriceHistoryRepository.findByItem_ItemNameOrderByCollectedAtAsc(itemName);
-        List<Integer> prices = histories.stream()
-                .map(MarketPriceHistory::getPrice)
-                .collect(Collectors.toList());
-
-        // 자바 엔진으로 계산해서 반환
-        return predictionService.predictNextPrice(prices);
-    }
-
-    // 내부 DTO
-    public record MarketPriceHistoryDto(Integer price, Integer tradeCount, String collectedAt) {}
 }
