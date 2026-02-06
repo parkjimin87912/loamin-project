@@ -11,8 +11,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -46,14 +46,11 @@ public class LostArkApiService {
             while (pageNo <= MAX_PAGES) {
                 Map<String, Object> body = new HashMap<>();
                 
-                // [수정] API 호출 시 정렬은 기본값(최저가순)으로 요청하고, 서비스 단에서 재정렬하도록 변경
-                // 잘못된 Sort 파라미터로 인한 API 오류 방지
                 body.put("Sort", "CURRENT_MIN_PRICE");
                 body.put("SortCondition", "ASC");
 
                 body.put("CategoryCode", categoryCode);
                 
-                // 생활(90000), 각인서(40000), 배틀아이템(60000~)은 티어 필터 제외
                 if (categoryCode != 90000 && categoryCode != 40000 && categoryCode / 10000 != 6) {
                     body.put("ItemTier", tier != null ? tier : 3);
                 }
@@ -116,8 +113,6 @@ public class LostArkApiService {
                 body.put("ItemTier", tier != null ? tier : 3);
                 body.put("PageNo", pageNo);
 
-                // [수정] itemName이 null이거나 "전체"인 경우, 보석(210000)은 "보석"이라는 키워드로 검색해야 전체 조회가 됨
-                // 경매장 API는 ItemName이 없으면 검색이 안 되는 경우가 있음 (특히 보석)
                 if (itemName != null && !itemName.isEmpty() && !itemName.equals("전체")) {
                     body.put("ItemName", itemName);
                 } else if (categoryCode == 210000) {
@@ -162,13 +157,20 @@ public class LostArkApiService {
 
             HttpEntity<String> request = new HttpEntity<>(headers);
             
-            // URL 인코딩 처리
+            // [수정] URL 인코딩 문제 해결을 위해 문자열 직접 조합 후 URI.create 사용
+            // UriComponentsBuilder 사용 시 이중 인코딩(%2B -> %252B) 문제가 발생할 수 있음
             String encodedName = URLEncoder.encode(characterName, StandardCharsets.UTF_8.toString());
-            // [수정] URL 인코딩 시 '+' 기호가 공백으로 인식되는 문제 방지 (%2B로 명시적 인코딩)
-            // filters=profiles+equipment -> filters=profiles%2Bequipment
-            String url = CHARACTER_API_URL + "/" + encodedName + "?filters=profiles%2Bequipment";
+            
+            // filters 파라미터: profiles, equipment, combat-skills, engravings, cards, gems, arkpassive
+            // '+' 기호는 URL에서 공백으로 처리되므로 '%2B'로 명시적 인코딩
+            String filters = "profiles%2Bequipment%2Bcombat-skills%2Bengravings%2Bcards%2Bgems%2Barkpassive";
+            String urlStr = CHARACTER_API_URL + "/" + encodedName + "?filters=" + filters;
+            
+            URI uri = URI.create(urlStr);
 
-            ResponseEntity<Map> response = restTemplate.exchange(url, org.springframework.http.HttpMethod.GET, request, Map.class);
+            log.info("Requesting Character Info URI: {}", uri);
+
+            ResponseEntity<Map> response = restTemplate.exchange(uri, org.springframework.http.HttpMethod.GET, request, Map.class);
             
             if (response.getBody() == null) {
                 return null;
@@ -176,30 +178,174 @@ public class LostArkApiService {
             
             Map<String, Object> body = response.getBody();
             
-            // 프로필 정보 파싱
+            // 1. 프로필 정보
             Map<String, Object> profile = (Map<String, Object>) body.get("ArmoryProfile");
-            if (profile == null) return null;
+            if (profile == null) return null; // 프로필이 없으면 캐릭터가 없는 것으로 간주
             
             String serverName = (String) profile.get("ServerName");
-            int level = (int) profile.get("CharacterLevel");
+            int level = profile.get("CharacterLevel") != null ? (int) profile.get("CharacterLevel") : 0;
             String className = (String) profile.get("CharacterClassName");
             String itemAvgLevel = (String) profile.get("ItemAvgLevel");
             String itemMaxLevel = (String) profile.get("ItemMaxLevel");
+            String characterImage = (String) profile.get("CharacterImage");
+            String guildName = (String) profile.get("GuildName");
+            String title = (String) profile.get("Title");
             
-            // 장비 정보 파싱
-            List<LostArkCharacterDto.EquipmentDto> equipmentList = new ArrayList<>();
-            List<Map<String, Object>> equipmentRaw = (List<Map<String, Object>>) body.get("ArmoryEquipment");
-            
-            if (equipmentRaw != null) {
-                for (Map<String, Object> eq : equipmentRaw) {
-                    String type = (String) eq.get("Type");
-                    String name = (String) eq.get("Name");
-                    String icon = (String) eq.get("Icon");
-                    String grade = (String) eq.get("Grade");
-                    
-                    equipmentList.add(new LostArkCharacterDto.EquipmentDto(type, name, icon, grade));
+            // 스탯 정보
+            List<LostArkCharacterDto.StatDto> stats = new ArrayList<>();
+            try {
+                List<Map<String, Object>> statsRaw = (List<Map<String, Object>>) profile.get("Stats");
+                if (statsRaw != null) {
+                    for (Map<String, Object> s : statsRaw) {
+                        String type = (String) s.get("Type");
+                        String value = (String) s.get("Value");
+                        List<String> tooltips = (List<String>) s.get("Tooltip");
+                        String tooltip = tooltips != null && !tooltips.isEmpty() ? tooltips.get(0) : "";
+                        stats.add(new LostArkCharacterDto.StatDto(type, value, tooltip));
+                    }
                 }
-            }
+            } catch (Exception e) { log.warn("스탯 파싱 실패", e); }
+            
+            // 2. 장비 정보
+            List<LostArkCharacterDto.EquipmentDto> equipmentList = new ArrayList<>();
+            try {
+                List<Map<String, Object>> equipmentRaw = (List<Map<String, Object>>) body.get("ArmoryEquipment");
+                if (equipmentRaw != null) {
+                    for (Map<String, Object> eq : equipmentRaw) {
+                        String type = (String) eq.get("Type");
+                        String name = (String) eq.get("Name");
+                        String icon = (String) eq.get("Icon");
+                        String grade = (String) eq.get("Grade");
+                        String tooltip = (String) eq.get("Tooltip");
+                        equipmentList.add(new LostArkCharacterDto.EquipmentDto(type, name, icon, grade, tooltip));
+                    }
+                }
+            } catch (Exception e) { log.warn("장비 파싱 실패", e); }
+            
+            // 3. 보석 정보
+            List<LostArkCharacterDto.GemDto> gems = new ArrayList<>();
+            try {
+                Map<String, Object> gemsRaw = (Map<String, Object>) body.get("ArmoryGem");
+                if (gemsRaw != null) {
+                    List<Map<String, Object>> gemList = (List<Map<String, Object>>) gemsRaw.get("Gems");
+                    if (gemList != null) {
+                        for (Map<String, Object> g : gemList) {
+                            int slot = (int) g.get("Slot");
+                            String name = (String) g.get("Name");
+                            String icon = (String) g.get("Icon");
+                            int gemLevel = (int) g.get("Level");
+                            String grade = (String) g.get("Grade");
+                            String tooltip = (String) g.get("Tooltip");
+                            gems.add(new LostArkCharacterDto.GemDto(slot, name, icon, gemLevel, grade, tooltip));
+                        }
+                    }
+                }
+            } catch (Exception e) { log.warn("보석 파싱 실패", e); }
+            
+            // 4. 카드 정보
+            List<LostArkCharacterDto.CardDto> cards = new ArrayList<>();
+            List<LostArkCharacterDto.CardEffectDto> cardEffects = new ArrayList<>();
+            try {
+                Map<String, Object> cardsRaw = (Map<String, Object>) body.get("ArmoryCard");
+                if (cardsRaw != null) {
+                    List<Map<String, Object>> cardList = (List<Map<String, Object>>) cardsRaw.get("Cards");
+                    if (cardList != null) {
+                        for (Map<String, Object> c : cardList) {
+                            int slot = (int) c.get("Slot");
+                            String name = (String) c.get("Name");
+                            String icon = (String) c.get("Icon");
+                            int awakeCount = (int) c.get("AwakeCount");
+                            String grade = (String) c.get("Grade");
+                            cards.add(new LostArkCharacterDto.CardDto(slot, name, icon, awakeCount, grade));
+                        }
+                    }
+                    
+                    List<Map<String, Object>> effectList = (List<Map<String, Object>>) cardsRaw.get("Effects");
+                    if (effectList != null) {
+                        for (Map<String, Object> e : effectList) {
+                            int index = (int) e.get("Index");
+                            List<Integer> cardSlots = (List<Integer>) e.get("CardSlots");
+                            List<Map<String, Object>> itemsRaw = (List<Map<String, Object>>) e.get("Items");
+                            List<LostArkCharacterDto.ItemDto> items = new ArrayList<>();
+                            if (itemsRaw != null) {
+                                for (Map<String, Object> i : itemsRaw) {
+                                    items.add(new LostArkCharacterDto.ItemDto((String) i.get("Name"), (String) i.get("Description")));
+                                }
+                            }
+                            cardEffects.add(new LostArkCharacterDto.CardEffectDto(index, cardSlots, items));
+                        }
+                    }
+                }
+            } catch (Exception e) { log.warn("카드 파싱 실패", e); }
+            
+            // 5. 스킬 정보
+            List<LostArkCharacterDto.SkillDto> skills = new ArrayList<>();
+            try {
+                List<Map<String, Object>> skillsRaw = (List<Map<String, Object>>) body.get("ArmorySkills");
+                if (skillsRaw != null) {
+                    for (Map<String, Object> s : skillsRaw) {
+                        String name = (String) s.get("Name");
+                        String icon = (String) s.get("Icon");
+                        int skillLevel = (int) s.get("Level");
+                        String type = (String) s.get("Type");
+                        boolean isAwakening = (boolean) s.get("IsAwakening");
+                        
+                        List<LostArkCharacterDto.TripodDto> tripods = new ArrayList<>();
+                        List<Map<String, Object>> tripodsRaw = (List<Map<String, Object>>) s.get("Tripods");
+                        if (tripodsRaw != null) {
+                            for (Map<String, Object> t : tripodsRaw) {
+                                boolean isSelected = (boolean) t.get("IsSelected");
+                                if (isSelected) {
+                                    tripods.add(new LostArkCharacterDto.TripodDto(
+                                        (int) t.get("Tier"),
+                                        (int) t.get("Slot"),
+                                        (String) t.get("Name"),
+                                        (String) t.get("Icon"),
+                                        (int) t.get("Level"),
+                                        true
+                                    ));
+                                }
+                            }
+                        }
+                        
+                        String runeName = null;
+                        String runeIcon = null;
+                        String runeGrade = null;
+                        Map<String, Object> runeRaw = (Map<String, Object>) s.get("Rune");
+                        if (runeRaw != null) {
+                            runeName = (String) runeRaw.get("Name");
+                            runeIcon = (String) runeRaw.get("Icon");
+                            runeGrade = (String) runeRaw.get("Grade");
+                        }
+                        
+                        skills.add(new LostArkCharacterDto.SkillDto(name, icon, skillLevel, type, isAwakening, tripods, runeName, runeIcon, runeGrade));
+                    }
+                }
+            } catch (Exception e) { log.warn("스킬 파싱 실패", e); }
+            
+            // 6. 아크패시브 정보
+            LostArkCharacterDto.ArkPassiveDto arkPassive = new LostArkCharacterDto.ArkPassiveDto(false, new ArrayList<>());
+            try {
+                Map<String, Object> arkPassiveRaw = (Map<String, Object>) body.get("ArmoryArkPassive");
+                if (arkPassiveRaw != null) {
+                    Boolean isArkPassive = (Boolean) arkPassiveRaw.get("IsArkPassive");
+                    arkPassive.setArkPassive(isArkPassive != null && isArkPassive);
+                    
+                    List<Map<String, Object>> effectsRaw = (List<Map<String, Object>>) arkPassiveRaw.get("Effects");
+                    if (effectsRaw != null) {
+                        List<LostArkCharacterDto.ArkPassiveEffectDto> effects = new ArrayList<>();
+                        for (Map<String, Object> eff : effectsRaw) {
+                            effects.add(new LostArkCharacterDto.ArkPassiveEffectDto(
+                                (String) eff.get("Name"),
+                                (String) eff.get("Description"),
+                                (String) eff.get("Icon"),
+                                (String) eff.get("Grade")
+                            ));
+                        }
+                        arkPassive.setEffects(effects);
+                    }
+                }
+            } catch (Exception e) { log.warn("아크패시브 파싱 실패", e); }
 
             return new LostArkCharacterDto(
                     serverName,
@@ -208,7 +354,16 @@ public class LostArkApiService {
                     className,
                     itemAvgLevel,
                     itemMaxLevel,
-                    equipmentList
+                    characterImage,
+                    guildName,
+                    title,
+                    stats,
+                    equipmentList,
+                    gems,
+                    cards,
+                    cardEffects,
+                    skills,
+                    arkPassive
             );
 
         } catch (Exception e) {
@@ -245,7 +400,6 @@ public class LostArkApiService {
         );
     }
 
-    // [추가] 경매장 데이터 DTO 변환
     private LostArkMarketItemDto convertAuctionToDto(Map<String, Object> raw) {
         String name = (String) raw.get("Name");
         String grade = (String) raw.get("Grade");
@@ -256,27 +410,24 @@ public class LostArkApiService {
         int startPrice = 0;
         
         if (auctionInfo != null) {
-            // 즉시 구매가가 있으면 사용, 없으면 시작가 사용 (보통 즉구가 기준)
             Object buyPriceObj = auctionInfo.get("BuyPrice");
             Object startPriceObj = auctionInfo.get("StartPrice");
             
             minPrice = buyPriceObj != null ? (int) buyPriceObj : 0;
             startPrice = startPriceObj != null ? (int) startPriceObj : 0;
             
-            // 즉시 구매가가 0이면(매물이 없거나 입찰 전용) 시작가로 표시할 수도 있음
             if (minPrice == 0) minPrice = startPrice;
         }
 
-        // 경매장은 전일 평균가, 최근 거래가 정보가 없으므로 0 처리
         return new LostArkMarketItemDto(
                 UUID.randomUUID().toString(),
                 name,
                 grade,
-                1, // 보석은 1개 단위
+                1,
                 minPrice,
-                0, // 최근 거래가 없음
-                0, // 전일 평균가 없음
-                0, // 등락률 없음
+                0,
+                0,
+                0,
                 iconUrl
         );
     }
