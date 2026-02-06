@@ -1,5 +1,6 @@
 package dev.j2m2n.backendserver.services;
 
+import dev.j2m2n.backendserver.dtos.LostArkCharacterDto;
 import dev.j2m2n.backendserver.dtos.LostArkMarketItemDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,7 +11,10 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -24,6 +28,8 @@ public class LostArkApiService {
 
     private static final String MARKET_API_URL = "https://developer-lostark.game.onstove.com/markets/items";
     private static final String AUCTION_API_URL = "https://developer-lostark.game.onstove.com/auctions/items";
+    private static final String CHARACTER_API_URL = "https://developer-lostark.game.onstove.com/armories/characters";
+    
     private final RestTemplate restTemplate = new RestTemplate();
 
     // [기존] 거래소 아이템 검색
@@ -40,14 +46,10 @@ public class LostArkApiService {
             while (pageNo <= MAX_PAGES) {
                 Map<String, Object> body = new HashMap<>();
                 
-                // [수정] 배틀 아이템(60000번대)은 전일 평균가 기준 내림차순(DESC)
-                if (categoryCode / 10000 == 6) {
-                    body.put("Sort", "YDAY_AVG_PRICE");
-                    body.put("SortCondition", "DESC");
-                } else {
-                    body.put("Sort", "CURRENT_MIN_PRICE");
-                    body.put("SortCondition", "ASC");
-                }
+                // [수정] API 호출 시 정렬은 기본값(최저가순)으로 요청하고, 서비스 단에서 재정렬하도록 변경
+                // 잘못된 Sort 파라미터로 인한 API 오류 방지
+                body.put("Sort", "CURRENT_MIN_PRICE");
+                body.put("SortCondition", "ASC");
 
                 body.put("CategoryCode", categoryCode);
                 
@@ -149,6 +151,70 @@ public class LostArkApiService {
         }
 
         return allItems;
+    }
+
+    // [추가] 캐릭터 정보 검색
+    public LostArkCharacterDto getCharacterInfo(String characterName) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authorization", "bearer " + apiKey);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<String> request = new HttpEntity<>(headers);
+            
+            // URL 인코딩 처리
+            String encodedName = URLEncoder.encode(characterName, StandardCharsets.UTF_8.toString());
+            // [수정] URL 인코딩 시 '+' 기호가 공백으로 인식되는 문제 방지 (%2B로 명시적 인코딩)
+            // filters=profiles+equipment -> filters=profiles%2Bequipment
+            String url = CHARACTER_API_URL + "/" + encodedName + "?filters=profiles%2Bequipment";
+
+            ResponseEntity<Map> response = restTemplate.exchange(url, org.springframework.http.HttpMethod.GET, request, Map.class);
+            
+            if (response.getBody() == null) {
+                return null;
+            }
+            
+            Map<String, Object> body = response.getBody();
+            
+            // 프로필 정보 파싱
+            Map<String, Object> profile = (Map<String, Object>) body.get("ArmoryProfile");
+            if (profile == null) return null;
+            
+            String serverName = (String) profile.get("ServerName");
+            int level = (int) profile.get("CharacterLevel");
+            String className = (String) profile.get("CharacterClassName");
+            String itemAvgLevel = (String) profile.get("ItemAvgLevel");
+            String itemMaxLevel = (String) profile.get("ItemMaxLevel");
+            
+            // 장비 정보 파싱
+            List<LostArkCharacterDto.EquipmentDto> equipmentList = new ArrayList<>();
+            List<Map<String, Object>> equipmentRaw = (List<Map<String, Object>>) body.get("ArmoryEquipment");
+            
+            if (equipmentRaw != null) {
+                for (Map<String, Object> eq : equipmentRaw) {
+                    String type = (String) eq.get("Type");
+                    String name = (String) eq.get("Name");
+                    String icon = (String) eq.get("Icon");
+                    String grade = (String) eq.get("Grade");
+                    
+                    equipmentList.add(new LostArkCharacterDto.EquipmentDto(type, name, icon, grade));
+                }
+            }
+
+            return new LostArkCharacterDto(
+                    serverName,
+                    characterName,
+                    level,
+                    className,
+                    itemAvgLevel,
+                    itemMaxLevel,
+                    equipmentList
+            );
+
+        } catch (Exception e) {
+            log.error("로스트아크 캐릭터 API 호출 실패: {}", e.getMessage());
+            return null;
+        }
     }
 
     private LostArkMarketItemDto convertToDto(Map<String, Object> raw) {

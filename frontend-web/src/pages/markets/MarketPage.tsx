@@ -33,8 +33,8 @@ export default function MarketPage() {
         reforge: ["재련 재료", "재련 보조 재료"],
         life: ["전체", "고고학", "낚시", "채광", "벌목", "채집", "수렵", "기타"],
         engraving: [], // 각인서는 서브 탭 없음
-        gem: ["전체", "7레벨", "8레벨", "9레벨", "10레벨"], // [수정] 보석 탭 구성 변경
-        battle: ["회복형", "공격형", "기능성", "버프형"],
+        gem: ["전체", "7레벨", "8레벨", "9레벨", "10레벨"],
+        battle: ["전체", "회복형", "공격형", "기능성", "버프형"], // [수정] 배틀 아이템 '전체' 탭 추가
     };
 
     const currentTabs = subTabsMap[categoryId || "reforge"] || [];
@@ -73,7 +73,9 @@ export default function MarketPage() {
                 if (categoryId === 'life' && activeSubTab === '전체') {
                     // 생활 재료의 '전체' 탭인 경우 subCategory 파라미터 제외
                 } else if (categoryId === 'gem' && activeSubTab === '전체') {
-                    // [추가] 보석의 '전체' 탭인 경우 subCategory 파라미터 제외
+                    // 보석의 '전체' 탭인 경우 subCategory 파라미터 제외
+                } else if (categoryId === 'battle' && activeSubTab === '전체') {
+                    // [추가] 배틀 아이템의 '전체' 탭인 경우 subCategory 파라미터 제외
                 } else if (categoryId === 'engraving') {
                     // 각인서는 서브 카테고리 없음
                 } else {
@@ -146,8 +148,8 @@ export default function MarketPage() {
                     ))}
                 </div>
 
-                {/* [수정] 생활 재료, 각인서 탭일 때는 티어 선택 박스 숨김 */}
-                {categoryId !== 'life' && categoryId !== 'engraving' && (
+                {/* [수정] 생활 재료, 각인서, 배틀 아이템 탭일 때는 티어 선택 박스 숨김 */}
+                {categoryId !== 'life' && categoryId !== 'engraving' && categoryId !== 'battle' && (
                     <select
                         className="custom-select"
                         style={{ width: '100px', marginBottom: 0, padding:'8px' }}

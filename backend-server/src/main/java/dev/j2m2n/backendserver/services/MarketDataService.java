@@ -2,6 +2,7 @@ package dev.j2m2n.backendserver.services;
 
 import dev.j2m2n.backendserver.dtos.LostArkMarketItemDto;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -9,6 +10,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MarketDataService {
@@ -44,19 +46,12 @@ public class MarketDataService {
             categoryCode = 90000;
             tier = null;
         } else if ("battle".equals(category)) {
-            if ("회복".equals(subCategory)) {
-                categoryCode = 60010;
-            } else if ("공격".equals(subCategory)) {
-                categoryCode = 60020;
-            } else if ("기능".equals(subCategory)) {
-                categoryCode = 60030;
-            } else if ("버프".equals(subCategory)) {
-                categoryCode = 60040;
-            } else {
-                categoryCode = 60000;
-            }
-            tier = null; // [수정] 배틀 아이템은 티어 구분 없음 (API 호출 시 null로 전달하여 필터 제외)
+            // [수정] 배틀 아이템은 전체(60000)를 조회한 후 이름으로 필터링 (API 카테고리 코드 미동작 이슈 대응)
+            categoryCode = 60000;
+            tier = null; 
         }
+
+        log.info("Fetching items for category: {}, subCategory: {}, categoryCode: {}", category, subCategory, categoryCode);
 
         // 2. API 호출
         List<LostArkMarketItemDto> items;
@@ -111,6 +106,39 @@ public class MarketDataService {
                             .collect(Collectors.toList());
                 }
             }
+        }
+
+        // [추가] 배틀 아이템 필터링 및 정렬 로직
+        if ("battle".equals(category)) {
+            // 1. 서브 카테고리 이름 필터링 (사용자 요청: 이름으로 분류)
+            if (subCategory != null && !subCategory.equals("전체")) {
+                final String sub = subCategory.trim();
+                items = items.stream()
+                        .filter(item -> {
+                            String name = item.getName();
+                            if ("회복".equals(sub) || "회복형".equals(sub)) {
+                                return name.contains("회복약");
+                            } else if ("공격".equals(sub) || "공격형".equals(sub)) {
+                                return name.contains("폭탄") || name.contains("수류탄") || name.contains("파괴");
+                            } else if ("기능".equals(sub) || "기능성".equals(sub)) {
+                                return name.contains("신호탄") || name.contains("페로몬") || name.contains("부적") || 
+                                       name.contains("로브") || name.contains("허수아비") || name.contains("시간 정지") || name.contains("정비");
+                            } else if ("버프".equals(sub) || "버프형".equals(sub)) {
+                                return (name.contains("각성약") || name.contains("아드로핀") || name.contains("물약")) &&
+                                       !name.contains("회복약") && !name.contains("시간 정지");
+                            }
+                            return true;
+                        })
+                        .collect(Collectors.toList());
+            }
+
+            // 2. 최저가 또는 최근 거래가가 1000골드 이상인 아이템 제외
+            items = items.stream()
+                    .filter(item -> item.getMinPrice() < 1000 && item.getRecentPrice() < 1000)
+                    .collect(Collectors.toList());
+
+            // 3. 최근 거래가 기준 내림차순 정렬
+            items.sort((o1, o2) -> Integer.compare(o2.getRecentPrice(), o1.getRecentPrice()));
         }
 
         return items;
