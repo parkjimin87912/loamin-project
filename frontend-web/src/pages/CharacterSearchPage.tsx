@@ -2,6 +2,15 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import '../App.css';
 
+// ▼▼▼ [추가됨] 아이덴티티 및 특수 스킬 아이콘 매핑 ▼▼▼
+// 툴팁 텍스트에 해당 키워드가 있으면 이 아이콘을 사용합니다.
+const IDENTITY_ICONS: { [key: string]: string } = {
+    // [바드]
+    "세레나데 스킬": "https://cdn-lostark.game.onstove.com/efui_iconatlas/bd_skill/bd_skill_01_19.png", // 유저 제보 URL
+    "용맹의 세레나데": "https://cdn-lostark.game.onstove.com/efui_iconatlas/bard_skill/bard_skill_23.png",
+    "구원의 세레나데": "https://cdn-lostark.game.onstove.com/efui_iconatlas/bard_skill/bard_skill_22.png",
+}
+
 interface Stat {
     type: string;
     value: string;
@@ -540,7 +549,7 @@ export default function CharacterSearchPage() {
         return parts.join(' ');
     };
 
-    // [수정] 1레벨 스킬 및 아이덴티티 스킬 매칭 로직 개선
+    // [수정] 1레벨 스킬 및 아이덴티티 스킬 매칭 로직 개선 (바드 등 아이덴티티 지원)
     const findSkillIconFallback = (gemTooltip: string, skills: Skill[]): string | null => {
         if (!gemTooltip || !skills) return null;
 
@@ -564,18 +573,18 @@ export default function CharacterSearchPage() {
         // HTML 태그 제거
         const cleanText = textToSearch.replace(/<[^>]*>/g, '');
 
-        // 1. [우선순위 1] 아이덴티티 스킬 키워드 검색 (스킬 목록에 없어도 바로 반환)
-        // 툴팁 텍스트 자체에 키워드가 포함되어 있는지 확인
+        // 1. [우선순위 1] 아이덴티티 스킬 키워드 검색 (세레나데 등)
         for (const [key, url] of Object.entries(IDENTITY_ICONS)) {
+            // cleanText에 '세레나데 스킬' 등이 포함되어 있으면 해당 아이콘 반환
             if (cleanText.includes(key)) return url;
         }
 
         // 2. [우선순위 2] [스킬명] 패턴 추출 (4티어 보석 등)
-        // HTML 제거 전 원본 텍스트에서 FONT 색상 태그 안의 스킬명 추출 시도 (가장 정확함)
         const fontMatch = textToSearch.match(/<FONT COLOR='#FFD200'>([^<]+)<\/FONT>/);
         if (fontMatch) {
             const skillName = fontMatch[1].trim();
-            // 아이덴티티 체크 한 번 더 (혹시 몰라서)
+
+            // 아이덴티티 체크 한 번 더 (혹시 스킬명에 세레나데가 잡혔을 경우)
             if (IDENTITY_ICONS[skillName]) return IDENTITY_ICONS[skillName];
 
             const skill = skills.find(s => s.name === skillName);
