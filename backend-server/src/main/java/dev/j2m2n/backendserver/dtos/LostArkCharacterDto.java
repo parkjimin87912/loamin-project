@@ -5,7 +5,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
-import java.util.Map;
 
 @Data
 @AllArgsConstructor
@@ -21,24 +20,16 @@ public class LostArkCharacterDto {
     private String characterImage;
     private String guildName;
     private String title;
-    
-    // 기본 스탯 (공격력, 체력, 치명, 신속 등)
-    private List<StatDto> stats;
+    private String titleIcon; // [추가] 뱃지/엠블럼 이미지 URL
 
-    // 장비 (무기, 방어구, 악세서리, 어빌리티 스톤, 팔찌, 나침반, 부적 등)
+    // ... (나머지 필드는 기존과 동일, 그대로 두세요)
+    private List<StatDto> stats;
     private List<EquipmentDto> equipment;
-    
-    // 보석
     private List<GemDto> gems;
-    
-    // 카드
     private List<CardDto> cards;
     private List<CardEffectDto> cardEffects;
-    
-    // 스킬
     private List<SkillDto> skills;
-    
-    // 아크패시브 (구조가 복잡할 수 있으므로 유연하게 처리하거나 주요 필드만 매핑)
+
     private ArkPassiveDto arkPassive;
 
     @Data
@@ -49,7 +40,7 @@ public class LostArkCharacterDto {
         private String value;
         private String tooltip; // 세부 정보
     }
-    
+
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
@@ -60,7 +51,7 @@ public class LostArkCharacterDto {
         private String grade;
         private String tooltip; // 세부 옵션 파싱용 (JSON 문자열)
     }
-    
+
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
@@ -72,7 +63,7 @@ public class LostArkCharacterDto {
         private String grade;
         private String tooltip;
     }
-    
+
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
@@ -83,7 +74,7 @@ public class LostArkCharacterDto {
         private int awakeCount;
         private String grade;
     }
-    
+
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
@@ -92,7 +83,7 @@ public class LostArkCharacterDto {
         private List<Integer> cardSlots;
         private List<ItemDto> items;
     }
-    
+
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
@@ -100,7 +91,7 @@ public class LostArkCharacterDto {
         private String name;
         private String description;
     }
-    
+
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
@@ -115,7 +106,7 @@ public class LostArkCharacterDto {
         private String runeIcon;
         private String runeGrade;
     }
-    
+
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
@@ -127,7 +118,7 @@ public class LostArkCharacterDto {
         private int level;
         private boolean isSelected;
     }
-    
+
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
@@ -135,7 +126,7 @@ public class LostArkCharacterDto {
         private boolean isArkPassive;
         private List<ArkPassiveEffectDto> effects;
     }
-    
+
     @Data
     @AllArgsConstructor
     @NoArgsConstructor

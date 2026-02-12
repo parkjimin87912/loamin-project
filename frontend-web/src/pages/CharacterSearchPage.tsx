@@ -80,6 +80,7 @@ interface CharacterInfo {
     characterImage: string;
     guildName: string;
     title: string;
+    titleIcon?: string; // [추가] 뱃지 이미지 URL
     stats: Stat[];
     equipment: Equipment[];
     gems: Gem[];
@@ -173,7 +174,7 @@ export default function CharacterSearchPage() {
     };
 
     // 툴팁 파싱 함수 (전체 텍스트 탐색 방식 - 강력함)
-    const parseTooltip = (tooltip: string, itemType?: string) => {
+    const parseTooltip = (tooltip: string) => {
         try {
             const json = JSON.parse(tooltip);
             let quality = -1;
@@ -186,6 +187,7 @@ export default function CharacterSearchPage() {
             };
 
             // 재귀적으로 텍스트 추출
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const extractText = (obj: any): string[] => {
                 if (typeof obj === 'string') {
                     return stripHtml(obj).split('\n').map(s => s.trim()).filter(s => s);
@@ -200,6 +202,7 @@ export default function CharacterSearchPage() {
                 return [];
             };
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const traverse = (obj: any) => {
                 if (!obj) return;
 
@@ -212,7 +215,7 @@ export default function CharacterSearchPage() {
                 if (typeof obj === 'object' && obj.type === "ItemPartBox") {
                     const titleObj = obj.value?.Element_000;
                     const contentObj = obj.value?.Element_001;
-                    
+
                     const titleText = typeof titleObj === 'string' ? stripHtml(titleObj) : "";
                     const contentLines = extractText(contentObj);
 
@@ -229,14 +232,15 @@ export default function CharacterSearchPage() {
                     if (titleText.includes("팔찌 효과")) {
                         contentLines.forEach(line => {
                             if (!line.includes("팔찌 효과") && !line.includes("부여 효과")) {
+                                // eslint-disable-next-line no-useless-escape
                                 options.push(line.replace(/[\[\]]/g, ''));
                             }
                         });
                     }
-                    
+
                     // 2-3. 각인 효과 (어빌리티 스톤 등)
                     if (titleText.includes("각인 효과")) {
-                         contentLines.forEach(line => {
+                        contentLines.forEach(line => {
                             // [원한] 활성도 +9 또는 [원한] +9
                             const match = line.match(/\[([^\]]+)\]\s*(?:활성도)?\s*\+?\s*(\d+)/);
                             if (match) {
@@ -245,7 +249,7 @@ export default function CharacterSearchPage() {
                         });
                     }
                 }
-                
+
                 // 3. IndentStringGroup (어빌리티 스톤 세공 결과 등)
                 if (typeof obj === 'object' && obj.type === "IndentStringGroup") {
                     const lines = extractText(obj);
@@ -260,7 +264,7 @@ export default function CharacterSearchPage() {
                 // 4. 일반 문자열 스캔 (기본 특성 및 놓친 각인)
                 if (typeof obj === 'string') {
                     const cleanText = stripHtml(obj);
-                    
+
                     // 기본 특성 (치명, 특화, 신속 등)
                     const stats = ["치명", "특화", "신속", "제압", "인내", "숙련"];
                     stats.forEach(stat => {
@@ -299,31 +303,31 @@ export default function CharacterSearchPage() {
                         options.push(`${match2[1]} +${match2[2]}`);
                     }
                 }
-                
+
                 // 5. ItemPartBox에서 각인 효과가 Element_000에 바로 들어있는 경우 (어빌리티 스톤의 경우)
                 if (typeof obj === 'object' && obj.type === "ItemPartBox") {
-                     // Element_000, Element_001, Element_002 등을 모두 확인
-                     Object.keys(obj.value).forEach(key => {
-                         if (key.startsWith("Element_")) {
-                             const element = obj.value[key];
-                             // contentStr 필드가 있는 경우 (어빌리티 스톤)
-                             if (element && typeof element.contentStr === 'string') {
-                                 const cleanContent = stripHtml(element.contentStr);
-                                 const match = cleanContent.match(/\[([^\]]+)\]\s*Lv\.(\d+)/);
-                                 if (match) {
-                                     options.push(`${match[1]} +${match[2]}`);
-                                 }
-                             }
-                             // 그냥 문자열인 경우
-                             else if (typeof element === 'string') {
-                                 const cleanTitle = stripHtml(element);
-                                 const match = cleanTitle.match(/\[([^\]]+)\]\s*(?:활성도)?\s*\+?\s*(\d+)/);
-                                 if (match) {
-                                     options.push(`${match[1]} +${match[2]}`);
-                                 }
-                             }
-                         }
-                     });
+                    // Element_000, Element_001, Element_002 등을 모두 확인
+                    Object.keys(obj.value).forEach(key => {
+                        if (key.startsWith("Element_")) {
+                            const element = obj.value[key];
+                            // contentStr 필드가 있는 경우 (어빌리티 스톤)
+                            if (element && typeof element.contentStr === 'string') {
+                                const cleanContent = stripHtml(element.contentStr);
+                                const match = cleanContent.match(/\[([^\]]+)\]\s*Lv\.(\d+)/);
+                                if (match) {
+                                    options.push(`${match[1]} +${match[2]}`);
+                                }
+                            }
+                            // 그냥 문자열인 경우
+                            else if (typeof element === 'string') {
+                                const cleanTitle = stripHtml(element);
+                                const match = cleanTitle.match(/\[([^\]]+)\]\s*(?:활성도)?\s*\+?\s*(\d+)/);
+                                if (match) {
+                                    options.push(`${match[1]} +${match[2]}`);
+                                }
+                            }
+                        }
+                    });
                 }
 
                 // 재귀 탐색
@@ -336,16 +340,16 @@ export default function CharacterSearchPage() {
 
             // 필터링 및 중복 제거
             // 체력, 이동 속도 감소 등 부정적인 옵션이나 기본 스탯 중복 제거
-            options = options.filter(opt => 
-                !opt.includes("체력") && 
-                !opt.includes("이동 속도 감소") && 
-                !opt.includes("공격 속도 감소") && 
+            options = options.filter(opt =>
+                !opt.includes("체력") &&
+                !opt.includes("이동 속도 감소") &&
+                !opt.includes("공격 속도 감소") &&
                 !opt.includes("방어력 감소")
             );
             options = [...new Set(options)];
-            
+
             return { quality, options, mainStat };
-        } catch (e) {
+        } catch {
             return { quality: -1, options: [], mainStat: "" };
         }
     };
@@ -506,12 +510,12 @@ export default function CharacterSearchPage() {
 
         return (
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ 
-                    background: bgColor, 
-                    color: textColor, 
-                    padding: '1px 4px', 
-                    borderRadius: '3px', 
-                    fontSize: '11px', 
+                <span style={{
+                    background: bgColor,
+                    color: textColor,
+                    padding: '1px 4px',
+                    borderRadius: '3px',
+                    fontSize: '11px',
                     fontWeight: 'bold',
                     flexShrink: 0
                 }}>
@@ -529,7 +533,7 @@ export default function CharacterSearchPage() {
     const leftEquipments = character?.equipment
         .filter(eq => leftEquipOrder.includes(eq.type))
         .sort((a, b) => leftEquipOrder.indexOf(a.type) - leftEquipOrder.indexOf(b.type)) || [];
-        
+
     const rightEquipments = character?.equipment.filter(eq => rightEquipTypes.includes(eq.type)) || [];
 
     // 탭 메뉴 정의
@@ -538,7 +542,7 @@ export default function CharacterSearchPage() {
     return (
         <div className="container" style={{ maxWidth: '1400px', margin: '0 auto', padding: '40px 20px' }}>
             <h1 style={{ textAlign: 'center', marginBottom: '30px', color: '#fff' }}>🔍 캐릭터 검색</h1>
-            
+
             <form onSubmit={handleSearch} style={{ display: 'flex', gap: '10px', marginBottom: '10px', maxWidth: '600px', margin: '0 auto 10px' }}>
                 <input
                     type="text"
@@ -576,15 +580,15 @@ export default function CharacterSearchPage() {
             {recentSearches.length > 0 && (
                 <div style={{ maxWidth: '600px', margin: '0 auto 40px', display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
                     {recentSearches.map(name => (
-                        <div 
-                            key={name} 
+                        <div
+                            key={name}
                             onClick={() => handleRecentClick(name)}
-                            style={{ 
-                                background: 'rgba(255,255,255,0.1)', 
-                                padding: '5px 12px', 
-                                borderRadius: '15px', 
-                                fontSize: '13px', 
-                                color: '#ddd', 
+                            style={{
+                                background: 'rgba(255,255,255,0.1)',
+                                padding: '5px 12px',
+                                borderRadius: '15px',
+                                fontSize: '13px',
+                                color: '#ddd',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -595,7 +599,7 @@ export default function CharacterSearchPage() {
                             onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
                         >
                             {name}
-                            <span 
+                            <span
                                 onClick={(e) => removeSearchTerm(name, e)}
                                 style={{ color: '#aaa', fontWeight: 'bold', fontSize: '14px' }}
                                 onMouseEnter={(e) => e.currentTarget.style.color = '#ef5350'}
@@ -609,12 +613,12 @@ export default function CharacterSearchPage() {
             )}
 
             {loading && <div style={{ textAlign: 'center', color: '#aaa' }}>검색 중...</div>}
-            
+
             {error && <div style={{ textAlign: 'center', color: '#ef5350' }}>캐릭터를 찾을 수 없습니다.</div>}
 
             {character && (
                 <div className="content-card" style={{ padding: '0', overflow: 'hidden', background: 'transparent', border: 'none' }}>
-                    
+
                     {/* 1. 탭 메뉴 */}
                     <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
                         {tabs.map(tab => (
@@ -641,7 +645,7 @@ export default function CharacterSearchPage() {
                     <div style={{ background: 'rgba(0,0,0,0.3)', padding: '20px', borderRadius: '8px', marginBottom: '20px', display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
                         <div style={{ textAlign: 'center' }}>
                             <div style={{ fontSize: '14px', color: '#aaa', marginBottom: '5px' }}>아이템 레벨</div>
-                            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ffb74d' }}>{character.itemMaxLevel}</div>
+                            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ffb74d' }}>{character.itemMaxLevel || character.itemAvgLevel}</div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
                             <div style={{ fontSize: '14px', color: '#aaa', marginBottom: '5px' }}>전투 레벨</div>
@@ -662,7 +666,10 @@ export default function CharacterSearchPage() {
                         <div style={{ width: '350px', flexShrink: 0 }}>
                             <div style={{ position: 'relative', height: '500px', background: 'url(' + character.characterImage + ') no-repeat center top / cover', borderRadius: '12px', overflow: 'hidden', marginBottom: '20px', border: '1px solid var(--border-color)' }}>
                                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '20px', background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)' }}>
-                                    <div style={{ color: '#aaa', fontSize: '14px', marginBottom: '4px' }}>{character.title}</div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                        {character.titleIcon && <img src={character.titleIcon} alt="title icon" style={{ width: '24px', height: '24px' }} />}
+                                        <div style={{ color: '#aaa', fontSize: '14px' }}>{character.title}</div>
+                                    </div>
                                     <h2 style={{ margin: 0, fontSize: '28px', color: '#fff' }}>{character.characterName}</h2>
                                     <div style={{ marginTop: '8px', display: 'inline-block', background: 'var(--primary-color)', padding: '4px 10px', borderRadius: '4px', fontSize: '14px', color: '#fff' }}>{character.characterClassName}</div>
                                 </div>
@@ -684,7 +691,7 @@ export default function CharacterSearchPage() {
 
                         {/* 4. 오른쪽: 장비, 악세서리, 보석 등 */}
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                            
+
                             <div style={{ display: 'flex', gap: '20px' }}>
                                 {/* 왼쪽 컬럼: 장비 (무기, 방어구) */}
                                 <div style={{ flex: 1, background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
@@ -720,10 +727,10 @@ export default function CharacterSearchPage() {
                                     <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>악세서리 & 특수장비</h3>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                         {rightEquipments.map((eq, index) => {
-                                            const { quality, options, mainStat } = parseTooltip(eq.tooltip, eq.type);
+                                            const { quality, options, mainStat } = parseTooltip(eq.tooltip);
                                             const qualityInfo = getQualityGrade(quality);
                                             const isAbilityStone = eq.type === "어빌리티 스톤";
-                                            
+
                                             return (
                                                 <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '6px' }}>
                                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '40px', flexShrink: 0 }}>
