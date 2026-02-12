@@ -23,6 +23,7 @@ interface Gem {
     level: number;
     grade: string;
     tooltip: string;
+    skillIcon?: string;
 }
 
 interface Card {
@@ -80,7 +81,7 @@ interface CharacterInfo {
     characterImage: string;
     guildName: string;
     title: string;
-    titleIcon?: string; // [추가] 뱃지 이미지 URL
+    titleIcon?: string;
     stats: Stat[];
     equipment: Equipment[];
     gems: Gem[];
@@ -98,7 +99,6 @@ export default function CharacterSearchPage() {
     const [activeTab, setActiveTab] = useState('전체');
     const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
-    // 로컬 스토리지에서 검색 기록 불러오기
     useEffect(() => {
         const saved = localStorage.getItem('recentSearches');
         if (saved) {
@@ -110,25 +110,21 @@ export default function CharacterSearchPage() {
         }
     }, []);
 
-    // 검색어 저장
     const saveSearchTerm = (name: string) => {
         const trimmed = name.trim();
         if (!trimmed) return;
-        // 중복 제거 및 최신순 정렬, 최대 10개 유지
         const updated = [trimmed, ...recentSearches.filter(s => s !== trimmed)].slice(0, 10);
         setRecentSearches(updated);
         localStorage.setItem('recentSearches', JSON.stringify(updated));
     };
 
-    // 검색어 삭제
     const removeSearchTerm = (name: string, e: React.MouseEvent) => {
-        e.stopPropagation(); // 부모 클릭 이벤트 전파 방지
+        e.stopPropagation();
         const updated = recentSearches.filter(s => s !== name);
         setRecentSearches(updated);
         localStorage.setItem('recentSearches', JSON.stringify(updated));
     };
 
-    // 캐릭터 정보 가져오기
     const fetchCharacter = async (name: string) => {
         setLoading(true);
         setError(false);
@@ -173,213 +169,72 @@ export default function CharacterSearchPage() {
         }
     };
 
-    // 툴팁 파싱 함수 (전체 텍스트 탐색 방식 - 강력함)
-    const parseTooltip = (tooltip: string) => {
-        try {
-            const json = JSON.parse(tooltip);
-            let quality = -1;
-            let options: string[] = [];
-            let mainStat = ""; // 힘, 민첩, 지능 중 하나
+    const getQualityGrade = (quality: number) => {
+        if (quality === 100) return { text: '최상', color: '#fdd835' };
+        if (quality >= 90) return { text: '특급', color: '#ab47bc' };
+        if (quality >= 70) return { text: '상급', color: '#42a5f5' };
+        if (quality >= 50) return { text: '중급', color: '#66bb6a' };
+        if (quality >= 20) return { text: '하급', color: '#fff59d' };
+        return { text: '최하', color: '#ef5350' };
+    };
 
-            // 텍스트 추출 헬퍼 (HTML 태그 제거)
-            const stripHtml = (html: string) => {
-                return html.replace(/<BR>|<br>/gi, '\n').replace(/<[^>]*>/g, '').trim();
-            };
-
-            // 재귀적으로 텍스트 추출
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const extractText = (obj: any): string[] => {
-                if (typeof obj === 'string') {
-                    return stripHtml(obj).split('\n').map(s => s.trim()).filter(s => s);
-                }
-                if (typeof obj === 'object' && obj !== null) {
-                    let results: string[] = [];
-                    Object.values(obj).forEach(val => {
-                        results = [...results, ...extractText(val)];
-                    });
-                    return results;
-                }
-                return [];
-            };
-
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const traverse = (obj: any) => {
-                if (!obj) return;
-
-                // 1. 품질 (ItemTitle)
-                if (typeof obj === 'object' && obj.type === "ItemTitle" && obj.value?.qualityValue !== undefined) {
-                    quality = obj.value.qualityValue;
-                }
-
-                // 2. ItemPartBox (주요 옵션 섹션)
-                if (typeof obj === 'object' && obj.type === "ItemPartBox") {
-                    const titleObj = obj.value?.Element_000;
-                    const contentObj = obj.value?.Element_001;
-
-                    const titleText = typeof titleObj === 'string' ? stripHtml(titleObj) : "";
-                    const contentLines = extractText(contentObj);
-
-                    // 2-1. 연마 효과 (제목에 '연마'가 포함된 경우)
-                    if (titleText.includes("연마")) {
-                        contentLines.forEach(line => {
-                            if (line && !line.includes("연마")) {
-                                options.push(line);
-                            }
-                        });
-                    }
-
-                    // 2-2. 팔찌 효과
-                    if (titleText.includes("팔찌 효과")) {
-                        contentLines.forEach(line => {
-                            if (!line.includes("팔찌 효과") && !line.includes("부여 효과")) {
-                                // eslint-disable-next-line no-useless-escape
-                                options.push(line.replace(/[\[\]]/g, ''));
-                            }
-                        });
-                    }
-
-                    // 2-3. 각인 효과 (어빌리티 스톤 등)
-                    if (titleText.includes("각인 효과")) {
-                        contentLines.forEach(line => {
-                            // [원한] 활성도 +9 또는 [원한] +9
-                            const match = line.match(/\[([^\]]+)\]\s*(?:활성도)?\s*\+?\s*(\d+)/);
-                            if (match) {
-                                options.push(`${match[1]} +${match[2]}`);
-                            }
-                        });
-                    }
-                }
-
-                // 3. IndentStringGroup (어빌리티 스톤 세공 결과 등)
-                if (typeof obj === 'object' && obj.type === "IndentStringGroup") {
-                    const lines = extractText(obj);
-                    lines.forEach(line => {
-                        const match = line.match(/\[([^\]]+)\]\s*(?:활성도)?\s*\+?\s*(\d+)/);
-                        if (match) {
-                            options.push(`${match[1]} +${match[2]}`);
-                        }
-                    });
-                }
-
-                // 4. 일반 문자열 스캔 (기본 특성 및 놓친 각인)
-                if (typeof obj === 'string') {
-                    const cleanText = stripHtml(obj);
-
-                    // 기본 특성 (치명, 특화, 신속 등)
-                    const stats = ["치명", "특화", "신속", "제압", "인내", "숙련"];
-                    stats.forEach(stat => {
-                        const regex = new RegExp(`${stat}\\s*\\+\\s*(\\d+)`);
-                        const match = cleanText.match(regex);
-                        if (match) {
-                            options.push(`${stat} +${match[1]}`);
-                        }
-                    });
-
-                    // 주 스탯 (힘, 민첩, 지능) 찾기
-                    const mainStats = ["힘", "민첩", "지능"];
-                    mainStats.forEach(stat => {
-                        const regex = new RegExp(`${stat}\\s*\\+\\s*(\\d+)`);
-                        const match = cleanText.match(regex);
-                        if (match) {
-                            // 가장 먼저 발견된 주 스탯 하나만 저장 (보통 직업에 맞는 스탯이 뜸)
-                            if (!mainStat) {
-                                mainStat = `${stat} +${match[1]}`;
-                            }
-                        }
-                    });
-
-                    // 각인 (활성도 패턴) - 전역 검색
-                    // 패턴 1: [각인명] 활성도 +3
-                    const engravingRegex1 = /\[([^\]]+)\]\s*활성도\s*\+?\s*(\d+)/g;
-                    let match1;
-                    while ((match1 = engravingRegex1.exec(cleanText)) !== null) {
-                        options.push(`${match1[1]} +${match1[2]}`);
-                    }
-
-                    // 패턴 2: [각인명] Lv.3 (어빌리티 스톤 등)
-                    const engravingRegex2 = /\[([^\]]+)\]\s*Lv\.(\d+)/g;
-                    let match2;
-                    while ((match2 = engravingRegex2.exec(cleanText)) !== null) {
-                        options.push(`${match2[1]} +${match2[2]}`);
-                    }
-                }
-
-                // 5. ItemPartBox에서 각인 효과가 Element_000에 바로 들어있는 경우 (어빌리티 스톤의 경우)
-                if (typeof obj === 'object' && obj.type === "ItemPartBox") {
-                    // Element_000, Element_001, Element_002 등을 모두 확인
-                    Object.keys(obj.value).forEach(key => {
-                        if (key.startsWith("Element_")) {
-                            const element = obj.value[key];
-                            // contentStr 필드가 있는 경우 (어빌리티 스톤)
-                            if (element && typeof element.contentStr === 'string') {
-                                const cleanContent = stripHtml(element.contentStr);
-                                const match = cleanContent.match(/\[([^\]]+)\]\s*Lv\.(\d+)/);
-                                if (match) {
-                                    options.push(`${match[1]} +${match[2]}`);
-                                }
-                            }
-                            // 그냥 문자열인 경우
-                            else if (typeof element === 'string') {
-                                const cleanTitle = stripHtml(element);
-                                const match = cleanTitle.match(/\[([^\]]+)\]\s*(?:활성도)?\s*\+?\s*(\d+)/);
-                                if (match) {
-                                    options.push(`${match[1]} +${match[2]}`);
-                                }
-                            }
-                        }
-                    });
-                }
-
-                // 재귀 탐색
-                if (typeof obj === 'object') {
-                    Object.values(obj).forEach(child => traverse(child));
-                }
-            };
-
-            traverse(json);
-
-            // 필터링 및 중복 제거
-            // 체력, 이동 속도 감소 등 부정적인 옵션이나 기본 스탯 중복 제거
-            options = options.filter(opt =>
-                !opt.includes("체력") &&
-                !opt.includes("이동 속도 감소") &&
-                !opt.includes("공격 속도 감소") &&
-                !opt.includes("방어력 감소")
-            );
-            options = [...new Set(options)];
-
-            return { quality, options, mainStat };
-        } catch {
-            return { quality: -1, options: [], mainStat: "" };
+    const getRuneColor = (grade: string) => {
+        switch (grade) {
+            case '유물': return '#ff8a65';
+            case '전설': return '#ffb74d';
+            case '영웅': return '#ba68c8';
+            case '희귀': return '#4fc3f7';
+            case '고급': return '#81c784';
+            default: return '#aaa';
         }
     };
 
-    const getQualityGrade = (quality: number) => {
-        if (quality === 100) return { text: '최상', color: '#fdd835' }; // 노랑 (100)
-        if (quality >= 90) return { text: '특급', color: '#ab47bc' }; // 보라 (90~99)
-        if (quality >= 70) return { text: '상급', color: '#42a5f5' }; // 파랑 (70~89)
-        if (quality >= 50) return { text: '중급', color: '#66bb6a' }; // 초록 (50~69)
-        if (quality >= 20) return { text: '하급', color: '#fff59d' }; // 연노랑 (20~49)
-        return { text: '최하', color: '#ef5350' }; // 빨강 (0~19)
+    const renderBadge = (grade: string, text: string) => {
+        let bgColor = '#444';
+        let textColor = '#fff';
+
+        if (grade === '상') {
+            bgColor = '#fdd835';
+            textColor = '#000';
+        } else if (grade === '중') {
+            bgColor = '#ab47bc';
+            textColor = '#fff';
+        } else if (grade === '하') {
+            bgColor = '#42a5f5';
+            textColor = '#fff';
+        }
+
+        return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{
+                    background: bgColor,
+                    color: textColor,
+                    padding: '1px 4px',
+                    borderRadius: '3px',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    flexShrink: 0
+                }}>
+                    {grade}
+                </span>
+                <span>{text}</span>
+            </div>
+        );
     };
 
-    // 연마 효과 등급 파싱 및 스타일링
     const renderOption = (option: string, equipType: string) => {
-        // 1. 이미 텍스트에 상/중/하가 포함된 경우
         const gradeMatch = option.match(/^(상|중|하)\s/);
         if (gradeMatch) {
             const grade = gradeMatch[1];
             return renderBadge(grade, option.substring(1).trim());
         }
 
-        // 2. 숫자를 기반으로 등급 추론 (연마 효과)
         const numberMatch = option.match(/([\d,]+(?:\.\d+)?)/);
         if (numberMatch) {
             const value = parseFloat(numberMatch[1].replace(/,/g, ''));
             const isPercent = option.includes('%');
             let grade = '';
 
-            // 공통 옵션 (모든 부위)
             if (option.includes("최대 생명력")) {
                 if (value >= 6500) grade = '상';
                 else if (value >= 3250) grade = '중';
@@ -398,7 +253,6 @@ export default function CharacterSearchPage() {
                 else if (value >= 10) grade = '하';
             }
 
-            // 부위별 옵션
             if (!grade) {
                 if (equipType === "목걸이") {
                     if (option.includes("추가 피해")) {
@@ -413,15 +267,15 @@ export default function CharacterSearchPage() {
                         if (value >= 8.00) grade = '상';
                         else if (value >= 4.80) grade = '중';
                         else if (value >= 2.15) grade = '하';
-                    } else if (option.includes("획득량") || option.includes("아덴")) { // 서포트 아덴 획득량
+                    } else if (option.includes("획득량") || option.includes("아덴")) {
                         if (value >= 6.00) grade = '상';
                         else if (value >= 3.60) grade = '중';
                         else if (value >= 1.60) grade = '하';
-                    } else if (option.includes("무기 공격력") || option.includes("무기공격력")) { // % 없음
+                    } else if (option.includes("무기 공격력") || option.includes("무기공격력")) {
                         if (value >= 960) grade = '상';
                         else if (value >= 480) grade = '중';
                         else if (value >= 195) grade = '하';
-                    } else if (option.includes("공격력")) { // % 없음
+                    } else if (option.includes("공격력")) {
                         if (value >= 390) grade = '상';
                         else if (value >= 195) grade = '중';
                         else if (value >= 80) grade = '하';
@@ -493,40 +347,252 @@ export default function CharacterSearchPage() {
         return <div>{option}</div>;
     };
 
-    const renderBadge = (grade: string, text: string) => {
-        let bgColor = '#444';
-        let textColor = '#fff';
+    const parseTooltip = (tooltip: string) => {
+        try {
+            const json = JSON.parse(tooltip);
+            let quality = -1;
+            let options: string[] = [];
+            let mainStat = "";
 
-        if (grade === '상') {
-            bgColor = '#fdd835'; // 노랑
-            textColor = '#000';
-        } else if (grade === '중') {
-            bgColor = '#ab47bc'; // 보라
-            textColor = '#fff';
-        } else if (grade === '하') {
-            bgColor = '#42a5f5'; // 파랑
-            textColor = '#fff';
+            const stripHtml = (html: string) => {
+                return html.replace(/<BR>|<br>/gi, '\n').replace(/<[^>]*>/g, '').trim();
+            };
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const extractText = (obj: any): string[] => {
+                if (typeof obj === 'string') {
+                    return stripHtml(obj).split('\n').map(s => s.trim()).filter(s => s);
+                }
+                if (typeof obj === 'object' && obj !== null) {
+                    let results: string[] = [];
+                    Object.values(obj).forEach(val => {
+                        results = [...results, ...extractText(val)];
+                    });
+                    return results;
+                }
+                return [];
+            };
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const traverse = (obj: any) => {
+                if (!obj) return;
+
+                if (typeof obj === 'object' && obj.type === "ItemTitle" && obj.value?.qualityValue !== undefined) {
+                    quality = obj.value.qualityValue;
+                }
+
+                if (typeof obj === 'object' && obj.type === "ItemPartBox") {
+                    const titleObj = obj.value?.Element_000;
+                    const contentObj = obj.value?.Element_001;
+                    const titleText = typeof titleObj === 'string' ? stripHtml(titleObj) : "";
+                    const contentLines = extractText(contentObj);
+
+                    if (titleText.includes("연마")) {
+                        contentLines.forEach(line => {
+                            if (line && !line.includes("연마")) {
+                                options.push(line);
+                            }
+                        });
+                    }
+                    if (titleText.includes("팔찌 효과")) {
+                        contentLines.forEach(line => {
+                            if (!line.includes("팔찌 효과") && !line.includes("부여 효과")) {
+                                options.push(line.replace(/[\[\]]/g, ''));
+                            }
+                        });
+                    }
+                    if (titleText.includes("각인 효과")) {
+                        contentLines.forEach(line => {
+                            const match = line.match(/\[([^\]]+)\]\s*(?:활성도)?\s*\+?\s*(\d+)/);
+                            if (match) {
+                                options.push(`${match[1]} +${match[2]}`);
+                            }
+                        });
+                    }
+                }
+
+                if (typeof obj === 'object' && obj.type === "IndentStringGroup") {
+                    const lines = extractText(obj);
+                    lines.forEach(line => {
+                        const match = line.match(/\[([^\]]+)\]\s*(?:활성도)?\s*\+?\s*(\d+)/);
+                        if (match) {
+                            options.push(`${match[1]} +${match[2]}`);
+                        }
+                    });
+                }
+
+                if (typeof obj === 'string') {
+                    const cleanText = stripHtml(obj);
+                    const stats = ["치명", "특화", "신속", "제압", "인내", "숙련"];
+                    stats.forEach(stat => {
+                        const regex = new RegExp(`${stat}\\s*\\+\\s*(\\d+)`);
+                        const match = cleanText.match(regex);
+                        if (match) {
+                            options.push(`${stat} +${match[1]}`);
+                        }
+                    });
+                    const mainStats = ["힘", "민첩", "지능"];
+                    mainStats.forEach(stat => {
+                        const regex = new RegExp(`${stat}\\s*\\+\\s*(\\d+)`);
+                        const match = cleanText.match(regex);
+                        if (match) {
+                            if (!mainStat) {
+                                mainStat = `${stat} +${match[1]}`;
+                            }
+                        }
+                    });
+                    const engravingRegex1 = /\[([^\]]+)\]\s*활성도\s*\+?\s*(\d+)/g;
+                    let match1;
+                    while ((match1 = engravingRegex1.exec(cleanText)) !== null) {
+                        options.push(`${match1[1]} +${match1[2]}`);
+                    }
+                    const engravingRegex2 = /\[([^\]]+)\]\s*Lv\.(\d+)/g;
+                    let match2;
+                    while ((match2 = engravingRegex2.exec(cleanText)) !== null) {
+                        options.push(`${match2[1]} +${match2[2]}`);
+                    }
+                }
+
+                if (typeof obj === 'object' && obj.type === "ItemPartBox") {
+                    Object.keys(obj.value).forEach(key => {
+                        if (key.startsWith("Element_")) {
+                            const element = obj.value[key];
+                            if (element && typeof element.contentStr === 'string') {
+                                const cleanContent = stripHtml(element.contentStr);
+                                const match = cleanContent.match(/\[([^\]]+)\]\s*Lv\.(\d+)/);
+                                if (match) {
+                                    options.push(`${match[1]} +${match[2]}`);
+                                }
+                            }
+                            else if (typeof element === 'string') {
+                                const cleanTitle = stripHtml(element);
+                                const match = cleanTitle.match(/\[([^\]]+)\]\s*(?:활성도)?\s*\+?\s*(\d+)/);
+                                if (match) {
+                                    options.push(`${match[1]} +${match[2]}`);
+                                }
+                            }
+                        }
+                    });
+                }
+
+                if (typeof obj === 'object') {
+                    Object.values(obj).forEach(child => traverse(child));
+                }
+            };
+
+            traverse(json);
+
+            options = options.filter(opt =>
+                !opt.includes("체력") &&
+                !opt.includes("이동 속도 감소") &&
+                !opt.includes("공격 속도 감소") &&
+                !opt.includes("방어력 감소")
+            );
+            options = [...new Set(options)];
+
+            return { quality, options, mainStat };
+        } catch {
+            return { quality: -1, options: [], mainStat: "" };
         }
-
-        return (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{
-                    background: bgColor,
-                    color: textColor,
-                    padding: '1px 4px',
-                    borderRadius: '3px',
-                    fontSize: '11px',
-                    fontWeight: 'bold',
-                    flexShrink: 0
-                }}>
-                    {grade}
-                </span>
-                <span>{text}</span>
-            </div>
-        );
     };
 
-    // 장비 분류 및 정렬
+    // 보석 딜/쿨 구분 로직 (지원 효과 증가 포함)
+    const isDamageGem = (gem: Gem) => {
+        return gem.name.includes("겁화") ||
+            gem.name.includes("멸화") ||
+            (gem.name.includes("광휘") && (
+                gem.tooltip.includes("피해") ||
+                gem.tooltip.includes("지원") ||
+                gem.tooltip.includes("회복")
+            ));
+    };
+
+    const isCooldownGem = (gem: Gem) => {
+        return gem.name.includes("작열") ||
+            gem.name.includes("홍염") ||
+            (gem.name.includes("광휘") && gem.tooltip.includes("재사용 대기시간"));
+    };
+
+    const getGemSummary = () => {
+        if (!character?.gems) return null;
+
+        let dmgCount = 0;
+        let cdCount = 0;
+        let hasGeop = false;
+        let hasJak = false;
+
+        character.gems.forEach(gem => {
+            if (isDamageGem(gem)) {
+                dmgCount++;
+                if (gem.name.includes("겁화") || gem.name.includes("광휘")) hasGeop = true;
+            } else if (isCooldownGem(gem)) {
+                cdCount++;
+                if (gem.name.includes("작열") || gem.name.includes("광휘")) hasJak = true;
+            }
+        });
+
+        const parts = [];
+        if (dmgCount > 0) parts.push(`${dmgCount}${hasGeop ? '겁' : '멸'}`);
+        if (cdCount > 0) parts.push(`${cdCount}${hasJak ? '작' : '홍'}`);
+
+        if (parts.length === 0) return null;
+
+        return parts.join(' ');
+    };
+
+    // [수정] 1레벨 스킬 및 아이덴티티 스킬 매칭 로직 개선
+    const findSkillIconFallback = (gemTooltip: string, skills: Skill[]): string | null => {
+        if (!gemTooltip || !skills) return null;
+
+        let textToSearch = gemTooltip;
+
+        try {
+            const json = JSON.parse(gemTooltip);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const extractAllText = (obj: any): string => {
+                if (typeof obj === 'string') return obj;
+                if (typeof obj === 'object' && obj !== null) {
+                    return Object.values(obj).map(extractAllText).join(' ');
+                }
+                return '';
+            };
+            textToSearch = extractAllText(json);
+        } catch {
+            // ignore
+        }
+
+        // HTML 태그 제거
+        const cleanText = textToSearch.replace(/<[^>]*>/g, '');
+
+        // 1. [우선순위 1] 아이덴티티 스킬 키워드 검색 (스킬 목록에 없어도 바로 반환)
+        // 툴팁 텍스트 자체에 키워드가 포함되어 있는지 확인
+        for (const [key, url] of Object.entries(IDENTITY_ICONS)) {
+            if (cleanText.includes(key)) return url;
+        }
+
+        // 2. [우선순위 2] [스킬명] 패턴 추출 (4티어 보석 등)
+        // HTML 제거 전 원본 텍스트에서 FONT 색상 태그 안의 스킬명 추출 시도 (가장 정확함)
+        const fontMatch = textToSearch.match(/<FONT COLOR='#FFD200'>([^<]+)<\/FONT>/);
+        if (fontMatch) {
+            const skillName = fontMatch[1].trim();
+            // 아이덴티티 체크 한 번 더 (혹시 몰라서)
+            if (IDENTITY_ICONS[skillName]) return IDENTITY_ICONS[skillName];
+
+            const skill = skills.find(s => s.name === skillName);
+            if (skill) return skill.icon;
+        }
+
+        // 3. [우선순위 3] 일반 스킬 이름 직접 검색 (이름 긴 순서대로)
+        const sortedSkills = [...skills].sort((a, b) => b.name.length - a.name.length);
+        for (const skill of sortedSkills) {
+            if (cleanText.includes(skill.name)) {
+                return skill.icon;
+            }
+        }
+
+        return null;
+    };
+
     const leftEquipOrder = ["투구", "어깨", "상의", "하의", "장갑", "무기"];
     const rightEquipTypes = ["목걸이", "귀걸이", "반지", "어빌리티 스톤", "팔찌"];
 
@@ -536,7 +602,6 @@ export default function CharacterSearchPage() {
 
     const rightEquipments = character?.equipment.filter(eq => rightEquipTypes.includes(eq.type)) || [];
 
-    // 탭 메뉴 정의
     const tabs = ["전체", "스킬", "아크패시브", "아크그리드", "원정대"];
 
     return (
@@ -576,7 +641,6 @@ export default function CharacterSearchPage() {
                 </button>
             </form>
 
-            {/* 최근 검색어 */}
             {recentSearches.length > 0 && (
                 <div style={{ maxWidth: '600px', margin: '0 auto 40px', display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
                     {recentSearches.map(name => (
@@ -619,7 +683,6 @@ export default function CharacterSearchPage() {
             {character && (
                 <div className="content-card" style={{ padding: '0', overflow: 'hidden', background: 'transparent', border: 'none' }}>
 
-                    {/* 1. 탭 메뉴 */}
                     <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
                         {tabs.map(tab => (
                             <button
@@ -641,7 +704,6 @@ export default function CharacterSearchPage() {
                         ))}
                     </div>
 
-                    {/* 2. 메인 정보 (아이템 레벨, 전투력 등) - 상단 배치 */}
                     <div style={{ background: 'rgba(0,0,0,0.3)', padding: '20px', borderRadius: '8px', marginBottom: '20px', display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
                         <div style={{ textAlign: 'center' }}>
                             <div style={{ fontSize: '14px', color: '#aaa', marginBottom: '5px' }}>아이템 레벨</div>
@@ -662,7 +724,6 @@ export default function CharacterSearchPage() {
                     </div>
 
                     <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
-                        {/* 3. 왼쪽: 캐릭터 이미지 및 스펙 */}
                         <div style={{ width: '350px', flexShrink: 0 }}>
                             <div style={{ position: 'relative', height: '500px', background: 'url(' + character.characterImage + ') no-repeat center top / cover', borderRadius: '12px', overflow: 'hidden', marginBottom: '20px', border: '1px solid var(--border-color)' }}>
                                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '20px', background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)' }}>
@@ -675,7 +736,6 @@ export default function CharacterSearchPage() {
                                 </div>
                             </div>
 
-                            {/* 기본 스탯 표시 */}
                             <div style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
                                 <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>기본 특성</h3>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
@@ -689,11 +749,10 @@ export default function CharacterSearchPage() {
                             </div>
                         </div>
 
-                        {/* 4. 오른쪽: 장비, 악세서리, 보석 등 */}
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
                             <div style={{ display: 'flex', gap: '20px' }}>
-                                {/* 왼쪽 컬럼: 장비 (무기, 방어구) */}
+                                {/* 왼쪽 컬럼: 장비 (무기, 방어구) + 스킬 */}
                                 <div style={{ flex: 1, background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
                                     <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>장비</h3>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -719,6 +778,36 @@ export default function CharacterSearchPage() {
                                                 </div>
                                             );
                                         })}
+                                    </div>
+
+                                    {/* 장착 스킬 목록 (2열 배치) - [수정] 2레벨 이상 or 룬/각성기만 필터링하여 표시 */}
+                                    <h3 style={{ margin: '20px 0 15px 0', fontSize: '18px', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>스킬</h3>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                                        {character.skills
+                                            // 화면에 표시할 때는 2레벨 이상 스킬만 보여줌 (깔끔하게)
+                                            .filter(skill => skill.level >= 2 || skill.runeName || skill.isAwakening)
+                                            .sort((a, b) => b.level - a.level)
+                                            .map((skill, index) => (
+                                                <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '6px', borderRadius: '6px' }}>
+                                                    <div style={{ position: 'relative', width: '32px', height: '32px', borderRadius: '4px', overflow: 'hidden', flexShrink: 0 }}>
+                                                        <img src={skill.icon} alt={skill.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                        <div style={{ position: 'absolute', bottom: 0, right: 0, background: 'rgba(0,0,0,0.8)', color: '#fff', fontSize: '9px', padding: '0 2px', borderRadius: '2px' }}>
+                                                            {skill.level}
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ overflow: 'hidden' }}>
+                                                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#ddd', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                            {skill.name}
+                                                        </div>
+                                                        {skill.runeName && (
+                                                            <div style={{ fontSize: '11px', color: getRuneColor(skill.runeGrade), display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                                                <img src={skill.runeIcon} alt="" style={{ width: '12px', height: '12px' }} />
+                                                                {skill.runeName}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
                                     </div>
                                 </div>
 
@@ -767,20 +856,76 @@ export default function CharacterSearchPage() {
                                 </div>
                             </div>
 
-                            {/* 보석 */}
+                            {/* 보석 섹션 (11열 그리드 + 스킬 아이콘 2중 매칭 + 정렬 개선) */}
                             <div style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                                <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>보석</h3>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                    {character.gems.length > 0 ? character.gems.map((gem, index) => (
-                                        <div key={index} style={{ position: 'relative', width: '48px', height: '48px', borderRadius: '4px', overflow: 'hidden', background: '#000', border: `1px solid ${getGradeColor(gem.grade)}` }} title={gem.name}>
-                                            <img src={gem.icon} alt={gem.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                            <div style={{ position: 'absolute', bottom: 0, right: 0, background: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: '10px', padding: '1px 3px', borderRadius: '2px 0 0 0' }}>{gem.level}</div>
-                                        </div>
-                                    )) : <div style={{ color: '#aaa', fontSize: '14px' }}>장착된 보석이 없습니다.</div>}
-                                </div>
+                                <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px', display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                    보석
+                                    <span style={{ fontSize: '13px', color: '#aaa', fontWeight: 'normal' }}>{getGemSummary()}</span>
+                                </h3>
+                                {character.gems.length > 0 ? (
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(11, 1fr)', gap: '5px' }}>
+                                        {character.gems
+                                            .sort((a, b) => {
+                                                // [수정] 정렬 로직: 1. 딜(붉은색) 우선  2. 레벨 높은 순  3. 이름 순 (묶기 위해)
+                                                const isDmgA = isDamageGem(a);
+                                                const isDmgB = isDamageGem(b);
+                                                if (isDmgA && !isDmgB) return -1;
+                                                if (!isDmgA && isDmgB) return 1;
+                                                if (b.level !== a.level) return b.level - a.level;
+                                                return a.name.localeCompare(b.name);
+                                            })
+                                            .map((gem, index) => {
+                                                const isDmg = isDamageGem(gem);
+                                                const bgColor = isDmg ? 'rgba(255, 87, 34, 0.15)' : 'rgba(33, 150, 243, 0.15)';
+
+                                                // [수정] 2중 매칭 로직: 백엔드 아이콘 우선 -> 없으면 프론트엔드 폴백
+                                                let skillIcon = gem.skillIcon;
+                                                if (!skillIcon) {
+                                                    skillIcon = findSkillIconFallback(gem.tooltip, character.skills) || undefined;
+                                                }
+
+                                                return (
+                                                    <div key={index} style={{
+                                                        position: 'relative',
+                                                        width: '100%',
+                                                        aspectRatio: '1/1',
+                                                        borderRadius: '6px',
+                                                        overflow: 'hidden',
+                                                        background: bgColor,
+                                                        border: `1px solid ${getGradeColor(gem.grade)}`,
+                                                        padding: '2px'
+                                                    }} title={gem.name}>
+                                                        {/* 메인 보석 아이콘 */}
+                                                        <img src={gem.icon} alt={gem.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px' }} />
+
+                                                        {/* 보석 레벨 (우측 하단) */}
+                                                        <div style={{ position: 'absolute', bottom: 0, right: 0, background: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: '11px', padding: '1px 4px', borderRadius: '4px 0 0 0' }}>{gem.level}</div>
+
+                                                        {/* 스킬 아이콘 오버레이 (좌측 하단) */}
+                                                        {skillIcon && (
+                                                            <div style={{
+                                                                position: 'absolute',
+                                                                bottom: '2px',
+                                                                left: '2px',
+                                                                width: '18px',
+                                                                height: '18px',
+                                                                borderRadius: '3px',
+                                                                overflow: 'hidden',
+                                                                border: '1px solid rgba(0,0,0,0.6)',
+                                                                zIndex: 2
+                                                            }}>
+                                                                <img src={skillIcon} alt="skill" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                    </div>
+                                ) : (
+                                    <div style={{ color: '#aaa', fontSize: '14px' }}>장착된 보석이 없습니다.</div>
+                                )}
                             </div>
 
-                            {/* 카드 */}
                             <div style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
                                 <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>카드</h3>
                                 <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '10px' }}>

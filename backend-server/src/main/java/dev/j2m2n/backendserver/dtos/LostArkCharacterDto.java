@@ -20,16 +20,14 @@ public class LostArkCharacterDto {
     private String characterImage;
     private String guildName;
     private String title;
-    private String titleIcon; // [추가] 뱃지/엠블럼 이미지 URL
+    private String titleIcon;
 
-    // ... (나머지 필드는 기존과 동일, 그대로 두세요)
     private List<StatDto> stats;
     private List<EquipmentDto> equipment;
     private List<GemDto> gems;
     private List<CardDto> cards;
     private List<CardEffectDto> cardEffects;
     private List<SkillDto> skills;
-
     private ArkPassiveDto arkPassive;
 
     @Data
@@ -38,7 +36,7 @@ public class LostArkCharacterDto {
     public static class StatDto {
         private String type;
         private String value;
-        private String tooltip; // 세부 정보
+        private String tooltip;
     }
 
     @Data
@@ -49,7 +47,7 @@ public class LostArkCharacterDto {
         private String name;
         private String icon;
         private String grade;
-        private String tooltip; // 세부 옵션 파싱용 (JSON 문자열)
+        private String tooltip;
     }
 
     @Data
@@ -62,6 +60,7 @@ public class LostArkCharacterDto {
         private int level;
         private String grade;
         private String tooltip;
+        private String skillIcon; // [추가] 보석에 해당하는 스킬 아이콘
     }
 
     @Data
