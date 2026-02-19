@@ -29,6 +29,7 @@ public class LostArkCharacterDto {
     private List<CardEffectDto> cardEffects;
     private List<SkillDto> skills;
     private ArkPassiveDto arkPassive;
+    private List<ArkGridEffectDto> arkGridEffects; // [추가] 아크 그리드 (T4 각인)
 
     @Data
     @AllArgsConstructor
@@ -60,7 +61,7 @@ public class LostArkCharacterDto {
         private int level;
         private String grade;
         private String tooltip;
-        private String skillIcon; // [추가] 보석에 해당하는 스킬 아이콘
+        private String skillIcon;
     }
 
     @Data
@@ -123,7 +124,18 @@ public class LostArkCharacterDto {
     @NoArgsConstructor
     public static class ArkPassiveDto {
         private boolean isArkPassive;
+        private List<ArkPassivePointDto> points;
         private List<ArkPassiveEffectDto> effects;
+    }
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class ArkPassivePointDto {
+        private String name;
+        private int value;
+        private int rank;
+        private int level;
     }
 
     @Data
@@ -133,6 +145,17 @@ public class LostArkCharacterDto {
         private String name;
         private String description;
         private String icon;
+        private String grade;
+    }
+
+    // ▼▼▼ [추가] 아크 그리드 DTO ▼▼▼
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class ArkGridEffectDto {
+        private String name;
+        private String description;
+        private int level;
         private String grade;
     }
 }
