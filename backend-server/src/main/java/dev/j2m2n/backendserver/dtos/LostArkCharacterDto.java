@@ -18,6 +18,7 @@ public class LostArkCharacterDto {
     private String characterClassName;
     private String itemAvgLevel;
     private String itemMaxLevel;
+    private String combatPower; // 🌟 전투력 필드 추가
     private String characterImage;
     private String guildName;
     private String title;

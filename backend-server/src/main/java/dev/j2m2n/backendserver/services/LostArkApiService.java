@@ -67,6 +67,7 @@ public class LostArkApiService {
             dto.setCharacterClassName(profile.path("CharacterClassName").asText(null));
             dto.setItemAvgLevel(profile.path("ItemAvgLevel").asText(null));
             dto.setItemMaxLevel(profile.path("ItemMaxLevel").asText(null));
+            dto.setCombatPower(profile.path("CombatPower").asText(null));
             dto.setCharacterImage(profile.path("CharacterImage").asText(null));
             dto.setGuildName(profile.path("GuildName").asText(null));
             dto.setTitle(profile.path("Title").asText("").replaceAll("<[^>]*>", "").trim());

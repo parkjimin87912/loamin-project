@@ -28,6 +28,7 @@ interface CharacterInfo {
     characterClassName: string;
     itemAvgLevel: string;
     itemMaxLevel: string;
+    combatPower?: string;
     characterImage: string;
     guildName: string;
     title: string;
@@ -283,6 +284,7 @@ export default function CharacterSearchPage() {
             let quality = -1;
             let options: string[] = [];
             let mainStat = "";
+            let abilityEngravings: { name: string, level: number, isPenalty: boolean }[] = [];
 
             const stripHtml = (html: string) => html.replace(/<BR>|<br>/gi, '\n').replace(/<[^>]*>/g, '').trim();
 
@@ -318,6 +320,30 @@ export default function CharacterSearchPage() {
                     }
                 }
 
+                // 어빌리티 스톤 각인 효과 추출
+                if (typeof obj === 'object' && obj.type === "IndentStringGroup") {
+                    const topStr = obj.value?.Element_000?.topStr || "";
+                    if (topStr.includes("무작위 각인 효과")) {
+                        const contentStrs = obj.value?.Element_000?.contentStr || {};
+                        Object.values(contentStrs).forEach((item: any) => {
+                            const str = item.contentStr;
+                            if (str) {
+                                const nameMatch = str.match(/\[<FONT COLOR='#[^>]+'>([^<]+)<\/FONT>\]/);
+                                const levelMatch = str.match(/Lv\.(\d+)/);
+                                const isPenalty = str.includes("FE2E2E"); // 빨간색 = 페널티 효과
+
+                                if (nameMatch && levelMatch) {
+                                    abilityEngravings.push({
+                                        name: nameMatch[1],
+                                        level: parseInt(levelMatch[1], 10),
+                                        isPenalty: isPenalty
+                                    });
+                                }
+                            }
+                        });
+                    }
+                }
+
                 if (typeof obj === 'string') {
                     const cleanText = stripHtml(obj);
                     const mainStats = ["힘", "민첩", "지능"];
@@ -339,36 +365,37 @@ export default function CharacterSearchPage() {
             );
             options = [...new Set(options)];
 
-            return { quality, options, mainStat };
+            return { quality, options, mainStat, abilityEngravings };
         } catch {
-            return { quality: -1, options: [], mainStat: "" };
+            return { quality: -1, options: [], mainStat: "", abilityEngravings: [] };
         }
     };
 
-    const isDamageGem = (gem: Gem) => {
-        return gem.name.includes("겁화") ||
-            gem.name.includes("멸화") ||
-            (gem.name.includes("광휘") && (
-                gem.tooltip.includes("피해") ||
-                gem.tooltip.includes("지원") ||
-                gem.tooltip.includes("회복")
-            ));
+    // 보석 툴팁에 "재사용 대기시간"이 포함되어 있으면 쿨타임(작열/홍염) 보석
+    const isCooldownGem = (gem: Gem) => {
+        if (!gem.tooltip) return false;
+        return gem.tooltip.includes("재사용 대기시간");
     };
 
-    const isCooldownGem = (gem: Gem) => {
-        return gem.name.includes("작열") ||
-            gem.name.includes("홍염") ||
-            (gem.name.includes("광휘") && gem.tooltip.includes("재사용 대기시간"));
+    // 쿨타임 감소가 없으면 전부 피해량/지원(겁화/멸화) 보석
+    const isDamageGem = (gem: Gem) => {
+        return !isCooldownGem(gem);
     };
 
     const getGemSummary = () => {
         if (!character?.gems) return null;
 
-        let dmgCount = 0; let cdCount = 0; let hasGeop = false; let hasJak = false;
+        let dmgCount = 0; let cdCount = 0;
+        let hasGeop = false; let hasJak = false;
 
         character.gems.forEach(gem => {
-            if (isDamageGem(gem)) { dmgCount++; if (gem.name.includes("겁화") || gem.name.includes("광휘")) hasGeop = true; }
-            else if (isCooldownGem(gem)) { cdCount++; if (gem.name.includes("작열") || gem.name.includes("광휘")) hasJak = true; }
+            if (isCooldownGem(gem)) {
+                cdCount++;
+                if (gem.name.includes("작열") || gem.name.includes("광휘")) hasJak = true;
+            } else {
+                dmgCount++;
+                if (gem.name.includes("겁화") || gem.name.includes("광휘")) hasGeop = true;
+            }
         });
 
         const parts = [];
@@ -449,7 +476,7 @@ export default function CharacterSearchPage() {
                                 whiteSpace: 'nowrap'
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <div style={{ width: '16px', height: '16px', flexShrink: 0, overflow: 'hidden' }}>
+                                    <div style={{ width: '16px', height: '16px', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                         <img src={iconUrl} alt={point.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                                     </div>
                                     <span style={{ fontSize: '11px', fontWeight: 'bold', letterSpacing: '-0.5px' }}>{point.name}</span>
@@ -485,6 +512,15 @@ export default function CharacterSearchPage() {
     const rightEquipments = character?.equipment.filter(eq => rightEquipTypes.includes(eq.type)) || [];
 
     const tabs = ["전체", "스킬", "아크패시브", "각인", "원정대"];
+
+    // 전역으로 어빌리티 스톤의 각인 정보를 미리 추출 (각인 영역에서 매칭하기 위함)
+    const abilityStoneEq = character?.equipment.find(eq => eq.type === "어빌리티 스톤");
+    const globalStoneEngravings = abilityStoneEq ? parseTooltip(abilityStoneEq.tooltip).abilityEngravings : [];
+
+    // 감소 효과 제외 & 최대 5개까지만 노출되도록 필터링
+    const activeEngravings = character?.t4Engravings
+        ?.filter(e => !e.name.includes("감소"))
+        .slice(0, 5) || [];
 
     return (
         <div className="container" style={{ maxWidth: '1400px', margin: '0 auto', padding: '40px 20px' }}>
@@ -540,7 +576,16 @@ export default function CharacterSearchPage() {
                     </div>
 
                     <div style={{ background: 'rgba(0,0,0,0.3)', padding: '20px', borderRadius: '8px', marginBottom: '20px', display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
-                        <div style={{ textAlign: 'center' }}><div style={{ fontSize: '14px', color: '#aaa', marginBottom: '5px' }}>아이템 레벨</div><div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ffb74d' }}>{character.itemMaxLevel || character.itemAvgLevel}</div></div>
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '14px', color: '#aaa', marginBottom: '5px' }}>아이템 레벨</div>
+                            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ffb74d' }}>{character.itemMaxLevel || character.itemAvgLevel}</div>
+                        </div>
+                        {character.combatPower && (
+                            <div style={{ textAlign: 'center' }}>
+                                <div style={{ fontSize: '14px', color: '#aaa', marginBottom: '5px' }}>전투력</div>
+                                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ba94ff' }}>{character.combatPower}</div>
+                            </div>
+                        )}
                         <div style={{ textAlign: 'center' }}><div style={{ fontSize: '14px', color: '#aaa', marginBottom: '5px' }}>전투 레벨</div><div style={{ fontSize: '24px', fontWeight: 'bold', color: '#fff' }}>{character.characterLevel}</div></div>
                         <div style={{ textAlign: 'center' }}><div style={{ fontSize: '14px', color: '#aaa', marginBottom: '5px' }}>서버</div><div style={{ fontSize: '18px', color: '#fff' }}>{character.serverName}</div></div>
                         <div style={{ textAlign: 'center' }}><div style={{ fontSize: '14px', color: '#aaa', marginBottom: '5px' }}>길드</div><div style={{ fontSize: '18px', color: '#fff' }}>{character.guildName || '-'}</div></div>
@@ -583,7 +628,6 @@ export default function CharacterSearchPage() {
                                 )}
                             </div>
 
-                            {/* 아크 그리드 영역 - 가로 1줄 유지, 공간 삐져나가지 않게 수정 */}
                             <div style={{ marginTop: '20px', background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
                                 <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>
                                     아크 그리드
@@ -598,19 +642,20 @@ export default function CharacterSearchPage() {
                                                 background: 'rgba(255,255,255,0.03)',
                                                 padding: '8px 2px',
                                                 borderRadius: '8px',
-                                                alignItems: 'center'
+                                                alignItems: 'center',
+                                                height: '100%' // 🌟 카드가 전체 높이를 채우도록 설정
                                             }}>
                                                 <div style={{
                                                     width: '36px',
                                                     height: '36px',
                                                     borderRadius: '6px',
                                                     overflow: 'hidden',
-                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    border: 'none',
                                                     flexShrink: 0
                                                 }}>
                                                     <img src={grid.icon} alt={grid.effectName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                 </div>
-                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', width: '100%' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', width: '100%', flex: 1 }}>
                                                     <div style={{
                                                         fontSize: '11px',
                                                         fontWeight: 'bold',
@@ -622,7 +667,8 @@ export default function CharacterSearchPage() {
                                                         display: '-webkit-box',
                                                         WebkitLineClamp: 2,
                                                         WebkitBoxOrient: 'vertical',
-                                                        overflow: 'hidden'
+                                                        overflow: 'hidden',
+                                                        flex: 1 // 🌟 텍스트 영역이 남은 공간을 차지하게 함
                                                     }}>
                                                         {grid.effectName}
                                                     </div>
@@ -632,7 +678,8 @@ export default function CharacterSearchPage() {
                                                         color: '#fff',
                                                         background: 'rgba(0,0,0,0.5)',
                                                         padding: '2px 6px',
-                                                        borderRadius: '8px'
+                                                        borderRadius: '8px',
+                                                        marginTop: 'auto' // 🌟 포인트 배지를 항상 맨 아래로 밀어냄
                                                     }}>
                                                         {grid.point}P
                                                     </div>
@@ -647,26 +694,82 @@ export default function CharacterSearchPage() {
                                 )}
                             </div>
 
-                            {/* T4 유물 각인서 영역 */}
-                            <div style={{ marginTop: '20px', background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                                <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>
-                                    T4 유물 각인서
-                                </h3>
-                                {character.t4Engravings && character.t4Engravings.length > 0 ? (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                        {character.t4Engravings.map((effect, idx) => (
-                                            <div key={idx} style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                                                    <span style={{ fontSize: '12px', color: getGradeColor(effect.grade), fontWeight: 'bold' }}>Lv.{effect.level}</span>
-                                                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>{effect.name}</span>
+                            {/* 🌟 각인 영역 */}
+                            <div style={{ marginTop: '20px', background: 'var(--bg-card)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '12px' }}>
+                                    <h3 style={{ margin: 0, fontSize: '16px', color: '#fff', fontWeight: 'bold' }}>각인</h3>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px', color: '#aaa' }}>
+                                        <span>총 {activeEngravings.length}개</span>
+                                    </div>
+                                </div>
+
+                                {activeEngravings.length > 0 ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        {activeEngravings.map((effect, idx) => {
+                                            let bgPos = '-116px';
+                                            if (effect.grade === '전설') bgPos = '-58px';
+                                            else if (effect.grade === '영웅') bgPos = '-174px';
+                                            else if (effect.grade === '희귀') bgPos = '-232px';
+                                            else if (effect.grade === '고급') bgPos = '0px';
+
+                                            const matchedStoneEng = globalStoneEngravings.find(se => se.name === effect.name);
+
+                                            return (
+                                                <div key={idx} style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    background: 'rgba(255,255,255,0.03)',
+                                                    padding: '6px 12px',
+                                                    borderRadius: '9999px',
+                                                    transition: 'all 0.2s ease',
+                                                    cursor: 'pointer'
+                                                }}
+                                                     onMouseEnter={(e) => {
+                                                         e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                                                         e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.2)';
+                                                     }}
+                                                     onMouseLeave={(e) => {
+                                                         e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                                                         e.currentTarget.style.boxShadow = 'none';
+                                                     }}
+                                                     title={effect.description.replace(/<[^>]*>?/gm, '')}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <i style={{
+                                                            display: 'inline-block',
+                                                            width: '24px',
+                                                            height: '24px',
+                                                            transform: 'scale(0.75)',
+                                                            transformOrigin: 'center',
+                                                            background: `url("https://pica.korlark.com/2018/obt/assets/images/pc/profile/img_engrave_icon.png") ${bgPos} center`,
+                                                        }} />
+                                                        <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>{effect.name}</span>
+                                                        <span style={{ fontSize: '14px', fontWeight: 'bold', color: getGradeColor(effect.grade) }}>
+                                                            +{effect.level}
+                                                        </span>
+                                                    </div>
+
+                                                    {matchedStoneEng && matchedStoneEng.level > 0 && !matchedStoneEng.isPenalty && (
+                                                        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '2px', fontWeight: 'bold' }}>
+                                                            <i style={{
+                                                                display: 'inline-block',
+                                                                width: '24px',
+                                                                height: '24px',
+                                                                transform: 'scale(0.75)',
+                                                                transformOrigin: 'center',
+                                                                background: `url("https://pica.korlark.com/2018/obt/assets/images/pc/profile/img_engrave_icon.png") 0px center`,
+                                                            }} />
+                                                            <span style={{ fontSize: '14px', color: '#fff' }}>+{matchedStoneEng.level}</span>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <div style={{ fontSize: '12px', color: '#ccc', lineHeight: '1.4' }} dangerouslySetInnerHTML={{ __html: effect.description }} />
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 ) : (
                                     <div style={{ color: '#aaa', fontSize: '14px', textAlign: 'center', padding: '10px 0' }}>
-                                        장착된 T4 각인이 없습니다.
+                                        장착된 각인이 없습니다.
                                     </div>
                                 )}
                             </div>
@@ -725,7 +828,7 @@ export default function CharacterSearchPage() {
                                     <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>악세서리 & 특수장비</h3>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                         {rightEquipments.map((eq, index) => {
-                                            const { quality, options, mainStat } = parseTooltip(eq.tooltip);
+                                            const { quality, options, mainStat, abilityEngravings } = parseTooltip(eq.tooltip);
                                             const qualityInfo = getQualityGrade(quality);
 
                                             return (
@@ -740,11 +843,22 @@ export default function CharacterSearchPage() {
                                                     <div style={{ flex: 1, overflow: 'hidden' }}>
                                                         <div style={{ fontSize: '13px', fontWeight: 'bold', color: getGradeColor(eq.grade), marginBottom: '4px' }}>{eq.name}</div>
                                                         <div style={{ fontSize: '12px', color: '#ddd', lineHeight: '1.4' }}>
-                                                            {options.length > 0 ? (
+
+                                                            {eq.type === "어빌리티 스톤" && abilityEngravings.length > 0 ? (
+                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '4px' }}>
+                                                                    {abilityEngravings.map((eng, i) => (
+                                                                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                            <span style={{ color: eng.isPenalty ? '#ef5350' : '#81c784', fontWeight: 'bold' }}>[{eng.name}]</span>
+                                                                            <span style={{ color: '#fff', fontWeight: 'bold' }}>Lv.{eng.level}</span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            ) : options.length > 0 ? (
                                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                                                     {options.map((opt, i) => <div key={i}>{renderOption(opt, eq.type)}</div>)}
                                                                 </div>
                                                             ) : <span style={{ color: '#666' }}>옵션 정보 없음</span>}
+
                                                         </div>
                                                     </div>
                                                 </div>
