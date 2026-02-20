@@ -135,11 +135,18 @@ public class LostArkApiService {
             });
             dto.setSkills(skills);
 
-            // ArkPassive
-            LostArkCharacterDto.ArkPassiveDto arkPassive = new LostArkCharacterDto.ArkPassiveDto(false, new ArrayList<>(), new ArrayList<>());
+            // ArkPassive 🌟 (객체 생성 방식 수정 및 Title 파싱 추가)
+            LostArkCharacterDto.ArkPassiveDto arkPassive = new LostArkCharacterDto.ArkPassiveDto();
+            arkPassive.setPoints(new ArrayList<>());
+            arkPassive.setEffects(new ArrayList<>());
+
             JsonNode arkRaw = root.path("ArkPassive");
             if (!arkRaw.isMissingNode()) {
                 arkPassive.setArkPassive(arkRaw.path("IsArkPassive").asBoolean(false));
+
+                // 🌟 JSON의 "Title" 값을 읽어서 객체에 넣어줍니다 (예: "중력 수련")
+                arkPassive.setTitle(arkRaw.path("Title").asText(null));
+
                 List<LostArkCharacterDto.ArkPassivePointDto> points = new ArrayList<>();
                 arkRaw.path("Points").forEach(p -> {
                     String desc = p.path("Description").asText("");
@@ -159,7 +166,7 @@ public class LostArkApiService {
             });
             dto.setT4Engravings(t4Engravings);
 
-            // Ark Grids (공식 API JSON 방식 적용)
+            // Ark Grids
             List<LostArkCharacterDto.ArkGridDto> arkGrids = new ArrayList<>();
             JsonNode arkGridRaw = root.path("ArkGrid");
             if (!arkGridRaw.isMissingNode() && arkGridRaw.has("Slots")) {
@@ -171,7 +178,6 @@ public class LostArkApiService {
                     String coreType = fullName;
                     String effectName = "알 수 없음";
 
-                    // " : " 를 기준으로 코어 타입과 효과 이름을 분리합니다.
                     if (fullName.contains(" : ")) {
                         String[] parts = fullName.split(" : ", 2);
                         coreType = parts[0].trim();

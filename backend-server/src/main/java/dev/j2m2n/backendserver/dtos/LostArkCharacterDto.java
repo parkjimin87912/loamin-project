@@ -18,7 +18,7 @@ public class LostArkCharacterDto {
     private String characterClassName;
     private String itemAvgLevel;
     private String itemMaxLevel;
-    private String combatPower; // 🌟 전투력 필드 추가
+    private String combatPower;
     private String characterImage;
     private String guildName;
     private String title;
@@ -137,6 +137,7 @@ public class LostArkCharacterDto {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ArkPassiveDto {
         private boolean isArkPassive;
+        private String title; // 🌟 아크 패시브 타이틀 (예: 중력 수련) 필드 추가
         private List<ArkPassivePointDto> points;
         private List<ArkPassiveEffectDto> effects;
     }
