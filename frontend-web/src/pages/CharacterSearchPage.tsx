@@ -99,7 +99,6 @@ export default function CharacterSearchPage() {
         fetchCharacter(searchName.trim());
     };
 
-    // ▼▼▼ 빠졌던 handleRecentClick 함수 복구 ▼▼▼
     const handleRecentClick = (name: string) => {
         setSearchName(name);
         fetchCharacter(name);
@@ -584,23 +583,57 @@ export default function CharacterSearchPage() {
                                 )}
                             </div>
 
-                            {/* 아크 그리드 (코어) 영역 */}
+                            {/* 아크 그리드 영역 - 가로 1줄 유지, 공간 삐져나가지 않게 수정 */}
                             <div style={{ marginTop: '20px', background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
                                 <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>
                                     아크 그리드
                                 </h3>
                                 {character.arkGrids && character.arkGrids.length > 0 ? (
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '4px' }}>
                                         {character.arkGrids.map((grid, idx) => (
-                                            <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'rgba(255,255,255,0.03)', padding: '10px 0', borderRadius: '8px', alignItems: 'center' }}>
-                                                <div style={{ width: '42px', height: '42px', borderRadius: '8px', overflow: 'hidden' }}>
+                                            <div key={idx} style={{
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: '4px',
+                                                background: 'rgba(255,255,255,0.03)',
+                                                padding: '8px 2px',
+                                                borderRadius: '8px',
+                                                alignItems: 'center'
+                                            }}>
+                                                <div style={{
+                                                    width: '36px',
+                                                    height: '36px',
+                                                    borderRadius: '6px',
+                                                    overflow: 'hidden',
+                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    flexShrink: 0
+                                                }}>
                                                     <img src={grid.icon} alt={grid.effectName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                 </div>
-                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', width: '100%', padding: '0 4px' }}>
-                                                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#f97316', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', width: '100%' }}>
+                                                    <div style={{
+                                                        fontSize: '11px',
+                                                        fontWeight: 'bold',
+                                                        color: '#f97316',
+                                                        textAlign: 'center',
+                                                        lineHeight: '1.2',
+                                                        width: '100%',
+                                                        wordBreak: 'keep-all',
+                                                        display: '-webkit-box',
+                                                        WebkitLineClamp: 2,
+                                                        WebkitBoxOrient: 'vertical',
+                                                        overflow: 'hidden'
+                                                    }}>
                                                         {grid.effectName}
                                                     </div>
-                                                    <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#fff' }}>
+                                                    <div style={{
+                                                        fontSize: '10px',
+                                                        fontWeight: 'bold',
+                                                        color: '#fff',
+                                                        background: 'rgba(0,0,0,0.5)',
+                                                        padding: '2px 6px',
+                                                        borderRadius: '8px'
+                                                    }}>
                                                         {grid.point}P
                                                     </div>
                                                 </div>

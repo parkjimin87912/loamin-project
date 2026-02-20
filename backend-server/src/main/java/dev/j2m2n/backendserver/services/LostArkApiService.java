@@ -21,7 +21,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -38,61 +37,16 @@ public class LostArkApiService {
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // 아크 그리드는 아직 API 지원을 안 하므로 크롤링 유지 (단, 공식 사이트 구조 변경 시 깨질 수 있음)
-    private List<LostArkCharacterDto.ArkGridDto> scrapeArkGrid(String characterName) {
-        List<LostArkCharacterDto.ArkGridDto> list = new ArrayList<>();
-        try {
-            String urlStr = "https://lostark.game.onstove.com/Profile/Character/" + URLEncoder.encode(characterName, "UTF-8");
-            URI uri = URI.create(urlStr);
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-            ResponseEntity<String> response = restTemplate.exchange(uri, HttpMethod.GET, entity, String.class);
-            String html = response.getBody();
-            if (html == null) return list;
-
-            String[] coreTypes = {"질서의 해 코어", "질서의 달 코어", "질서의 별 코어", "혼돈의 해 코어", "혼돈의 달 코어", "혼돈의 별 코어", "생명의 해 코어", "생명의 달 코어", "생명의 별 코어"};
-            String[] icons = {
-                    "https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_13_96.png", "https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_13_97.png", "https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_13_98.png",
-                    "https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_13_99.png", "https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_13_100.png", "https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_13_101.png",
-                    "https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_13_102.png", "https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_13_103.png", "https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_13_104.png"
-            };
-
-            for (int i = 0; i < coreTypes.length; i++) {
-                int idx = html.indexOf(coreTypes[i]);
-                if (idx != -1) {
-                    int start = Math.max(0, idx - 1000);
-                    int end = Math.min(html.length(), idx + 1000);
-                    String chunk = html.substring(start, end);
-
-                    String effectName = "알 수 없음";
-                    Matcher nm = Pattern.compile("NameTagBox.*?value.*?<P ALIGN='CENTER'><FONT COLOR='#[^>]+'>([^<]+)</FONT></P>").matcher(chunk);
-                    if (nm.find()) effectName = nm.group(1).trim();
-
-                    int points = 0;
-                    Matcher pm = Pattern.compile(">(\\d+)P<").matcher(chunk);
-                    if (pm.find()) points = Integer.parseInt(pm.group(1));
-
-                    list.add(new LostArkCharacterDto.ArkGridDto(coreTypes[i], effectName, points, icons[i]));
-                }
-            }
-        } catch (Exception e) {
-            log.error("아크 그리드 크롤링 에러: {}", e.getMessage());
-        }
-        return list;
-    }
-
     public LostArkCharacterDto getCharacterInfo(String characterName) {
         try {
-            // [원복] 1. 완벽하게 작동했던 기존 헤더 및 엔티티 설정
             HttpHeaders headers = new HttpHeaders();
             headers.set("Authorization", "Bearer " + apiKey);
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<String> request = new HttpEntity<>(headers);
 
-            // [원복] 2. 완벽하게 작동했던 기존 URL 인코딩 로직 (%2B 사용)
             String encodedName = URLEncoder.encode(characterName, StandardCharsets.UTF_8.toString());
-            String filters = "profiles%2Bequipment%2Bcombat-skills%2Bengravings%2Bcards%2Bgems%2BArkPassive";
+            // API 필터에 ArkGrid 추가
+            String filters = "profiles%2Bequipment%2Bcombat-skills%2Bengravings%2Bcards%2Bgems%2BArkPassive%2BArkGrid";
             String urlStr = CHARACTER_API_URL + "/" + encodedName + "?filters=" + filters;
             URI uri = URI.create(urlStr);
 
@@ -204,8 +158,29 @@ public class LostArkApiService {
             });
             dto.setT4Engravings(t4Engravings);
 
-            // Ark Grids
-            dto.setArkGrids(scrapeArkGrid(characterName));
+            // Ark Grids (공식 API JSON 방식 적용)
+            List<LostArkCharacterDto.ArkGridDto> arkGrids = new ArrayList<>();
+            JsonNode arkGridRaw = root.path("ArkGrid");
+            if (!arkGridRaw.isMissingNode() && arkGridRaw.has("Slots")) {
+                arkGridRaw.path("Slots").forEach(slot -> {
+                    String fullName = slot.path("Name").asText(""); // ex: "질서의 해 코어 : 그라비티 코어"
+                    String icon = slot.path("Icon").asText("");
+                    int point = slot.path("Point").asInt(0);
+
+                    String coreType = fullName;
+                    String effectName = "알 수 없음";
+
+                    // " : " 를 기준으로 코어 타입과 효과 이름을 분리합니다.
+                    if (fullName.contains(" : ")) {
+                        String[] parts = fullName.split(" : ", 2);
+                        coreType = parts[0].trim();
+                        effectName = parts[1].trim();
+                    }
+
+                    arkGrids.add(new LostArkCharacterDto.ArkGridDto(coreType, effectName, point, icon));
+                });
+            }
+            dto.setArkGrids(arkGrids);
 
             return dto;
         } catch (Exception e) {
@@ -215,12 +190,10 @@ public class LostArkApiService {
     }
 
     public List<LostArkMarketItemDto> searchItems(int categoryCode, String itemName, Integer tier, String grade) {
-        // 기존과 로직 동일하므로 생략 없이 원본 유지 권장하나, JsonNode 방식 적용 시 아래와 같이 간결해집니다.
-        // (요청 길이 제한상 Market 부분은 기존 코드를 그대로 쓰셔도 무방합니다.)
-        return new ArrayList<>(); // 구현부는 생략. 위 CharacterInfo 패턴 참고.
+        return new ArrayList<>();
     }
 
     public List<LostArkMarketItemDto> searchAuctionItems(int categoryCode, String itemName, Integer tier) {
-        return new ArrayList<>(); // 구현부 생략.
+        return new ArrayList<>();
     }
 }
