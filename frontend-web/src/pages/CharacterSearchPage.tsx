@@ -8,90 +8,18 @@ const IDENTITY_ICONS: { [key: string]: string } = {
     "구원의 세레나데": "https://cdn-lostark.game.onstove.com/efui_iconatlas/bard_skill/bard_skill_22.png",
 }
 
-interface Stat {
-    type: string;
-    value: string;
-    tooltip: string;
-}
+interface Stat { type: string; value: string; tooltip: string; }
+interface Equipment { type: string; name: string; icon: string; grade: string; tooltip: string; }
+interface Gem { slot: number; name: string; icon: string; level: number; grade: string; tooltip: string; skillIcon?: string; }
+interface Card { slot: number; name: string; icon: string; awakeCount: number; grade: string; }
+interface CardEffect { index: number; cardSlots: number[]; items: { name: string; description: string }[]; }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+interface Skill { name: string; icon: string; level: number; type: string; isAwakening: boolean; tripods: any[]; runeName: string; runeIcon: string; runeGrade: string; }
+interface ArkPassivePoint { name: string; value: number; rank: number; level: number; }
+interface ArkPassive { isArkPassive: boolean; points: ArkPassivePoint[]; }
 
-interface Equipment {
-    type: string;
-    name: string;
-    icon: string;
-    grade: string;
-    tooltip: string;
-}
-
-interface Gem {
-    slot: number;
-    name: string;
-    icon: string;
-    level: number;
-    grade: string;
-    tooltip: string;
-    skillIcon?: string;
-}
-
-interface Card {
-    slot: number;
-    name: string;
-    icon: string;
-    awakeCount: number;
-    grade: string;
-}
-
-interface CardEffect {
-    index: number;
-    cardSlots: number[];
-    items: { name: string; description: string }[];
-}
-
-interface Skill {
-    name: string;
-    icon: string;
-    level: number;
-    type: string;
-    isAwakening: boolean;
-    tripods: {
-        tier: number;
-        slot: number;
-        name: string;
-        icon: string;
-        level: number;
-        isSelected: boolean;
-    }[];
-    runeName: string;
-    runeIcon: string;
-    runeGrade: string;
-}
-
-interface ArkPassiveEffect {
-    name: string;
-    description: string;
-    icon: string;
-    grade: string;
-}
-
-interface ArkPassivePoint {
-    name: string;
-    value: number;
-    rank: number;
-    level: number;
-}
-
-interface ArkPassive {
-    isArkPassive: boolean;
-    points: ArkPassivePoint[];
-    effects: ArkPassiveEffect[];
-}
-
-// 기존 아크 그리드로 썼던 인터페이스 (실제로는 T4 각인 데이터)
-interface ArkGridEffect {
-    name: string;
-    description: string;
-    level: number;
-    grade: string;
-}
+interface T4Engraving { name: string; description: string; level: number; grade: string; }
+interface ArkGrid { coreType: string; effectName: string; point: number; icon: string; }
 
 interface CharacterInfo {
     serverName: string;
@@ -111,7 +39,8 @@ interface CharacterInfo {
     cardEffects: CardEffect[];
     skills: Skill[];
     arkPassive?: ArkPassive;
-    arkGridEffects?: ArkGridEffect[];
+    t4Engravings?: T4Engraving[];
+    arkGrids?: ArkGrid[];
 }
 
 export default function CharacterSearchPage() {
@@ -125,11 +54,7 @@ export default function CharacterSearchPage() {
     useEffect(() => {
         const saved = localStorage.getItem('recentSearches');
         if (saved) {
-            try {
-                setRecentSearches(JSON.parse(saved));
-            } catch (e) {
-                console.error("검색 기록 파싱 오류", e);
-            }
+            try { setRecentSearches(JSON.parse(saved)); } catch (e) { console.error(e) }
         }
     }, []);
 
@@ -162,7 +87,6 @@ export default function CharacterSearchPage() {
                 setError(true);
             }
         } catch (err) {
-            console.error("캐릭터 검색 실패:", err);
             setError(true);
         } finally {
             setLoading(false);
@@ -175,6 +99,7 @@ export default function CharacterSearchPage() {
         fetchCharacter(searchName.trim());
     };
 
+    // ▼▼▼ 빠졌던 handleRecentClick 함수 복구 ▼▼▼
     const handleRecentClick = (name: string) => {
         setSearchName(name);
         fetchCharacter(name);
@@ -216,30 +141,13 @@ export default function CharacterSearchPage() {
         let bgColor = '#444';
         let textColor = '#fff';
 
-        if (grade === '상') {
-            bgColor = '#fdd835';
-            textColor = '#000';
-        } else if (grade === '중') {
-            bgColor = '#ab47bc';
-            textColor = '#fff';
-        } else if (grade === '하') {
-            bgColor = '#42a5f5';
-            textColor = '#fff';
-        }
+        if (grade === '상') { bgColor = '#fdd835'; textColor = '#000'; }
+        else if (grade === '중') { bgColor = '#ab47bc'; textColor = '#fff'; }
+        else if (grade === '하') { bgColor = '#42a5f5'; textColor = '#fff'; }
 
         return (
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{
-                    background: bgColor,
-                    color: textColor,
-                    padding: '1px 4px',
-                    borderRadius: '3px',
-                    fontSize: '11px',
-                    fontWeight: 'bold',
-                    flexShrink: 0
-                }}>
-                    {grade}
-                </span>
+                <span style={{ background: bgColor, color: textColor, padding: '1px 4px', borderRadius: '3px', fontSize: '11px', fontWeight: 'bold', flexShrink: 0 }}>{grade}</span>
                 <span>{text}</span>
             </div>
         );
@@ -377,32 +285,21 @@ export default function CharacterSearchPage() {
             let options: string[] = [];
             let mainStat = "";
 
-            const stripHtml = (html: string) => {
-                return html.replace(/<BR>|<br>/gi, '\n').replace(/<[^>]*>/g, '').trim();
-            };
+            const stripHtml = (html: string) => html.replace(/<BR>|<br>/gi, '\n').replace(/<[^>]*>/g, '').trim();
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const extractText = (obj: any): string[] => {
-                if (typeof obj === 'string') {
-                    return stripHtml(obj).split('\n').map(s => s.trim()).filter(s => s);
-                }
+                if (typeof obj === 'string') return stripHtml(obj).split('\n').map(s => s.trim()).filter(s => s);
                 if (typeof obj === 'object' && obj !== null) {
                     let results: string[] = [];
-                    Object.values(obj).forEach(val => {
-                        results = [...results, ...extractText(val)];
-                    });
+                    Object.values(obj).forEach(val => { results = [...results, ...extractText(val)]; });
                     return results;
                 }
                 return [];
             };
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const traverse = (obj: any) => {
                 if (!obj) return;
-
-                if (typeof obj === 'object' && obj.type === "ItemTitle" && obj.value?.qualityValue !== undefined) {
-                    quality = obj.value.qualityValue;
-                }
+                if (typeof obj === 'object' && obj.type === "ItemTitle" && obj.value?.qualityValue !== undefined) quality = obj.value.qualityValue;
 
                 if (typeof obj === 'object' && obj.type === "ItemPartBox") {
                     const titleObj = obj.value?.Element_000;
@@ -410,99 +307,29 @@ export default function CharacterSearchPage() {
                     const titleText = typeof titleObj === 'string' ? stripHtml(titleObj) : "";
                     const contentLines = extractText(contentObj);
 
-                    if (titleText.includes("연마")) {
+                    if (titleText.includes("연마") || titleText.includes("팔찌 효과") || titleText.includes("각인 효과")) {
                         contentLines.forEach(line => {
-                            if (line && !line.includes("연마")) {
-                                options.push(line);
+                            if (!line.includes("연마") && !line.includes("팔찌 효과") && !line.includes("부여 효과")) {
+                                const cleanLine = line.replace(/[\[\]]/g, '');
+                                const match = cleanLine.match(/(.+?)\s*(?:활성도)?\s*\+?\s*(\d+)/);
+                                if (match && titleText.includes("각인")) options.push(`${match[1]} +${match[2]}`);
+                                else options.push(cleanLine);
                             }
                         });
                     }
-                    if (titleText.includes("팔찌 효과")) {
-                        contentLines.forEach(line => {
-                            if (!line.includes("팔찌 효과") && !line.includes("부여 효과")) {
-                                options.push(line.replace(/[\[\]]/g, ''));
-                            }
-                        });
-                    }
-                    if (titleText.includes("각인 효과")) {
-                        contentLines.forEach(line => {
-                            const match = line.match(/\[([^\]]+)\]\s*(?:활성도)?\s*\+?\s*(\d+)/);
-                            if (match) {
-                                options.push(`${match[1]} +${match[2]}`);
-                            }
-                        });
-                    }
-                }
-
-                if (typeof obj === 'object' && obj.type === "IndentStringGroup") {
-                    const lines = extractText(obj);
-                    lines.forEach(line => {
-                        const match = line.match(/\[([^\]]+)\]\s*(?:활성도)?\s*\+?\s*(\d+)/);
-                        if (match) {
-                            options.push(`${match[1]} +${match[2]}`);
-                        }
-                    });
                 }
 
                 if (typeof obj === 'string') {
                     const cleanText = stripHtml(obj);
-                    const stats = ["치명", "특화", "신속", "제압", "인내", "숙련"];
-                    stats.forEach(stat => {
-                        const regex = new RegExp(`${stat}\\s*\\+\\s*(\\d+)`);
-                        const match = cleanText.match(regex);
-                        if (match) {
-                            options.push(`${stat} +${match[1]}`);
-                        }
-                    });
                     const mainStats = ["힘", "민첩", "지능"];
                     mainStats.forEach(stat => {
                         const regex = new RegExp(`${stat}\\s*\\+\\s*(\\d+)`);
                         const match = cleanText.match(regex);
-                        if (match) {
-                            if (!mainStat) {
-                                mainStat = `${stat} +${match[1]}`;
-                            }
-                        }
-                    });
-                    const engravingRegex1 = /\[([^\]]+)\]\s*활성도\s*\+?\s*(\d+)/g;
-                    let match1;
-                    while ((match1 = engravingRegex1.exec(cleanText)) !== null) {
-                        options.push(`${match1[1]} +${match1[2]}`);
-                    }
-                    const engravingRegex2 = /\[([^\]]+)\]\s*Lv\.(\d+)/g;
-                    let match2;
-                    while ((match2 = engravingRegex2.exec(cleanText)) !== null) {
-                        options.push(`${match2[1]} +${match2[2]}`);
-                    }
-                }
-
-                if (typeof obj === 'object' && obj.type === "ItemPartBox") {
-                    Object.keys(obj.value).forEach(key => {
-                        if (key.startsWith("Element_")) {
-                            const element = obj.value[key];
-                            if (element && typeof element.contentStr === 'string') {
-                                const cleanContent = stripHtml(element.contentStr);
-                                const match = cleanContent.match(/\[([^\]]+)\]\s*Lv\.(\d+)/);
-                                if (match) {
-                                    options.push(`${match[1]} +${match[2]}`);
-                                }
-                            }
-                            else if (typeof element === 'string') {
-                                const cleanTitle = stripHtml(element);
-                                const match = cleanTitle.match(/\[([^\]]+)\]\s*(?:활성도)?\s*\+?\s*(\d+)/);
-                                if (match) {
-                                    options.push(`${match[1]} +${match[2]}`);
-                                }
-                            }
-                        }
+                        if (match && !mainStat) mainStat = `${stat} +${match[1]}`;
                     });
                 }
-
-                if (typeof obj === 'object') {
-                    Object.values(obj).forEach(child => traverse(child));
-                }
+                if (typeof obj === 'object') Object.values(obj).forEach(child => traverse(child));
             };
-
             traverse(json);
 
             options = options.filter(opt =>
@@ -538,52 +365,34 @@ export default function CharacterSearchPage() {
     const getGemSummary = () => {
         if (!character?.gems) return null;
 
-        let dmgCount = 0;
-        let cdCount = 0;
-        let hasGeop = false;
-        let hasJak = false;
+        let dmgCount = 0; let cdCount = 0; let hasGeop = false; let hasJak = false;
 
         character.gems.forEach(gem => {
-            if (isDamageGem(gem)) {
-                dmgCount++;
-                if (gem.name.includes("겁화") || gem.name.includes("광휘")) hasGeop = true;
-            } else if (isCooldownGem(gem)) {
-                cdCount++;
-                if (gem.name.includes("작열") || gem.name.includes("광휘")) hasJak = true;
-            }
+            if (isDamageGem(gem)) { dmgCount++; if (gem.name.includes("겁화") || gem.name.includes("광휘")) hasGeop = true; }
+            else if (isCooldownGem(gem)) { cdCount++; if (gem.name.includes("작열") || gem.name.includes("광휘")) hasJak = true; }
         });
 
         const parts = [];
         if (dmgCount > 0) parts.push(`${dmgCount}${hasGeop ? '겁' : '멸'}`);
         if (cdCount > 0) parts.push(`${cdCount}${hasJak ? '작' : '홍'}`);
 
-        if (parts.length === 0) return null;
-
-        return parts.join(' ');
+        return parts.length === 0 ? null : parts.join(' ');
     };
 
     const findSkillIconFallback = (gemTooltip: string, skills: Skill[]): string | null => {
         if (!gemTooltip || !skills) return null;
-
         let textToSearch = gemTooltip;
-
         try {
             const json = JSON.parse(gemTooltip);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const extractAllText = (obj: any): string => {
                 if (typeof obj === 'string') return obj;
-                if (typeof obj === 'object' && obj !== null) {
-                    return Object.values(obj).map(extractAllText).join(' ');
-                }
+                if (typeof obj === 'object' && obj !== null) return Object.values(obj).map(extractAllText).join(' ');
                 return '';
             };
             textToSearch = extractAllText(json);
-        } catch {
-            // ignore
-        }
+        } catch {}
 
         const cleanText = textToSearch.replace(/<[^>]*>/g, '');
-
         for (const [key, url] of Object.entries(IDENTITY_ICONS)) {
             if (cleanText.includes(key)) return url;
         }
@@ -592,16 +401,13 @@ export default function CharacterSearchPage() {
         if (fontMatch) {
             const skillName = fontMatch[1].trim();
             if (IDENTITY_ICONS[skillName]) return IDENTITY_ICONS[skillName];
-
             const skill = skills.find(s => s.name === skillName);
             if (skill) return skill.icon;
         }
 
         const sortedSkills = [...skills].sort((a, b) => b.name.length - a.name.length);
         for (const skill of sortedSkills) {
-            if (cleanText.includes(skill.name)) {
-                return skill.icon;
-            }
+            if (cleanText.includes(skill.name)) return skill.icon;
         }
 
         return null;
@@ -679,7 +485,6 @@ export default function CharacterSearchPage() {
 
     const rightEquipments = character?.equipment.filter(eq => rightEquipTypes.includes(eq.type)) || [];
 
-    // [수정] 오해의 소지가 있던 탭 이름을 수정했습니다.
     const tabs = ["전체", "스킬", "아크패시브", "각인", "원정대"];
 
     return (
@@ -692,70 +497,23 @@ export default function CharacterSearchPage() {
                     value={searchName}
                     onChange={(e) => setSearchName(e.target.value)}
                     placeholder="캐릭터명을 입력하세요"
-                    style={{
-                        flex: 1,
-                        padding: '15px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--border-color)',
-                        background: 'var(--bg-input)',
-                        color: '#fff',
-                        fontSize: '16px'
-                    }}
+                    style={{ flex: 1, padding: '15px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: '#fff', fontSize: '16px' }}
                 />
-                <button
-                    type="submit"
-                    style={{
-                        padding: '0 30px',
-                        borderRadius: '8px',
-                        border: 'none',
-                        background: 'var(--primary-color)',
-                        color: '#fff',
-                        fontWeight: 'bold',
-                        cursor: 'pointer',
-                        fontSize: '16px'
-                    }}
-                >
-                    검색
-                </button>
+                <button type="submit" style={{ padding: '0 30px', borderRadius: '8px', border: 'none', background: 'var(--primary-color)', color: '#fff', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>검색</button>
             </form>
 
             {recentSearches.length > 0 && (
                 <div style={{ maxWidth: '600px', margin: '0 auto 40px', display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
                     {recentSearches.map(name => (
-                        <div
-                            key={name}
-                            onClick={() => handleRecentClick(name)}
-                            style={{
-                                background: 'rgba(255,255,255,0.1)',
-                                padding: '5px 12px',
-                                borderRadius: '15px',
-                                fontSize: '13px',
-                                color: '#ddd',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                transition: 'background 0.2s'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-                        >
+                        <div key={name} onClick={() => handleRecentClick(name)} style={{ background: 'rgba(255,255,255,0.1)', padding: '5px 12px', borderRadius: '15px', fontSize: '13px', color: '#ddd', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'background 0.2s' }}>
                             {name}
-                            <span
-                                onClick={(e) => removeSearchTerm(name, e)}
-                                style={{ color: '#aaa', fontWeight: 'bold', fontSize: '14px' }}
-                                onMouseEnter={(e) => e.currentTarget.style.color = '#ef5350'}
-                                onMouseLeave={(e) => e.currentTarget.style.color = '#aaa'}
-                            >
-                                ×
-                            </span>
+                            <span onClick={(e) => removeSearchTerm(name, e)} style={{ color: '#aaa', fontWeight: 'bold', fontSize: '14px' }}>×</span>
                         </div>
                     ))}
                 </div>
             )}
 
             {loading && <div style={{ textAlign: 'center', color: '#aaa' }}>검색 중...</div>}
-
             {error && <div style={{ textAlign: 'center', color: '#ef5350' }}>캐릭터를 찾을 수 없습니다.</div>}
 
             {character && (
@@ -783,22 +541,10 @@ export default function CharacterSearchPage() {
                     </div>
 
                     <div style={{ background: 'rgba(0,0,0,0.3)', padding: '20px', borderRadius: '8px', marginBottom: '20px', display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
-                        <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '14px', color: '#aaa', marginBottom: '5px' }}>아이템 레벨</div>
-                            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ffb74d' }}>{character.itemMaxLevel || character.itemAvgLevel}</div>
-                        </div>
-                        <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '14px', color: '#aaa', marginBottom: '5px' }}>전투 레벨</div>
-                            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#fff' }}>{character.characterLevel}</div>
-                        </div>
-                        <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '14px', color: '#aaa', marginBottom: '5px' }}>서버</div>
-                            <div style={{ fontSize: '18px', color: '#fff' }}>{character.serverName}</div>
-                        </div>
-                        <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '14px', color: '#aaa', marginBottom: '5px' }}>길드</div>
-                            <div style={{ fontSize: '18px', color: '#fff' }}>{character.guildName || '-'}</div>
-                        </div>
+                        <div style={{ textAlign: 'center' }}><div style={{ fontSize: '14px', color: '#aaa', marginBottom: '5px' }}>아이템 레벨</div><div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ffb74d' }}>{character.itemMaxLevel || character.itemAvgLevel}</div></div>
+                        <div style={{ textAlign: 'center' }}><div style={{ fontSize: '14px', color: '#aaa', marginBottom: '5px' }}>전투 레벨</div><div style={{ fontSize: '24px', fontWeight: 'bold', color: '#fff' }}>{character.characterLevel}</div></div>
+                        <div style={{ textAlign: 'center' }}><div style={{ fontSize: '14px', color: '#aaa', marginBottom: '5px' }}>서버</div><div style={{ fontSize: '18px', color: '#fff' }}>{character.serverName}</div></div>
+                        <div style={{ textAlign: 'center' }}><div style={{ fontSize: '14px', color: '#aaa', marginBottom: '5px' }}>길드</div><div style={{ fontSize: '18px', color: '#fff' }}>{character.guildName || '-'}</div></div>
                     </div>
 
                     <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
@@ -829,31 +575,53 @@ export default function CharacterSearchPage() {
                             <div style={{ marginTop: '20px', background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
                                 <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                     아크패시브
-                                    {character.arkPassive?.isArkPassive && (
-                                        <span style={{ fontSize: '12px', background: '#ba94ff', color: '#000', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>
-                                            Active
-                                        </span>
-                                    )}
+                                    {character.arkPassive?.isArkPassive && <span style={{ fontSize: '12px', background: '#ba94ff', color: '#000', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>Active</span>}
                                 </h3>
-
                                 {character.arkPassive && character.arkPassive.points && character.arkPassive.points.length > 0 ? (
                                     renderArkPassivePoints()
                                 ) : (
+                                    <div style={{ color: '#aaa', fontSize: '14px', textAlign: 'center', padding: '10px 0' }}>활성화된 아크패시브 포인트가 없습니다.</div>
+                                )}
+                            </div>
+
+                            {/* 아크 그리드 (코어) 영역 */}
+                            <div style={{ marginTop: '20px', background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                                <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>
+                                    아크 그리드
+                                </h3>
+                                {character.arkGrids && character.arkGrids.length > 0 ? (
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px' }}>
+                                        {character.arkGrids.map((grid, idx) => (
+                                            <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'rgba(255,255,255,0.03)', padding: '10px 0', borderRadius: '8px', alignItems: 'center' }}>
+                                                <div style={{ width: '42px', height: '42px', borderRadius: '8px', overflow: 'hidden' }}>
+                                                    <img src={grid.icon} alt={grid.effectName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                </div>
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', width: '100%', padding: '0 4px' }}>
+                                                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#f97316', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>
+                                                        {grid.effectName}
+                                                    </div>
+                                                    <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#fff' }}>
+                                                        {grid.point}P
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
                                     <div style={{ color: '#aaa', fontSize: '14px', textAlign: 'center', padding: '10px 0' }}>
-                                        활성화된 아크패시브 포인트가 없습니다.
+                                        장착된 아크 그리드가 없습니다.
                                     </div>
                                 )}
                             </div>
 
-                            {/* ▼▼▼ [수정됨] "T4 유물 각인"으로 이름 변경 ▼▼▼ */}
+                            {/* T4 유물 각인서 영역 */}
                             <div style={{ marginTop: '20px', background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
                                 <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>
-                                    T4 유물 각인
+                                    T4 유물 각인서
                                 </h3>
-
-                                {character.arkGridEffects && character.arkGridEffects.length > 0 ? (
+                                {character.t4Engravings && character.t4Engravings.length > 0 ? (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                        {character.arkGridEffects.map((effect, idx) => (
+                                        {character.t4Engravings.map((effect, idx) => (
                                             <div key={idx} style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                                                     <span style={{ fontSize: '12px', color: getGradeColor(effect.grade), fontWeight: 'bold' }}>Lv.{effect.level}</span>
@@ -872,7 +640,6 @@ export default function CharacterSearchPage() {
                         </div>
 
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
-
                             <div style={{ display: 'flex', gap: '20px' }}>
                                 <div style={{ flex: 1, background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
                                     <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>장비</h3>
@@ -886,11 +653,7 @@ export default function CharacterSearchPage() {
                                                         <div style={{ width: '40px', height: '40px', borderRadius: '4px', overflow: 'hidden', background: '#000', border: `1px solid ${getGradeColor(eq.grade)}`, marginBottom: '4px' }}>
                                                             <img src={eq.icon} alt={eq.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                         </div>
-                                                        {quality >= 0 && (
-                                                            <div style={{ fontSize: '11px', fontWeight: 'bold', color: qualityInfo.color, textAlign: 'center', whiteSpace: 'nowrap' }}>
-                                                                품질 {quality}
-                                                            </div>
-                                                        )}
+                                                        {quality >= 0 && <div style={{ fontSize: '11px', fontWeight: 'bold', color: qualityInfo.color, textAlign: 'center', whiteSpace: 'nowrap' }}>품질 {quality}</div>}
                                                     </div>
                                                     <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '40px' }}>
                                                         <div style={{ fontSize: '11px', color: '#aaa' }}>{eq.type}</div>
@@ -910,18 +673,13 @@ export default function CharacterSearchPage() {
                                                 <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '6px', borderRadius: '6px' }}>
                                                     <div style={{ position: 'relative', width: '32px', height: '32px', borderRadius: '4px', overflow: 'hidden', flexShrink: 0 }}>
                                                         <img src={skill.icon} alt={skill.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                        <div style={{ position: 'absolute', bottom: 0, right: 0, background: 'rgba(0,0,0,0.8)', color: '#fff', fontSize: '9px', padding: '0 2px', borderRadius: '2px' }}>
-                                                            {skill.level}
-                                                        </div>
+                                                        <div style={{ position: 'absolute', bottom: 0, right: 0, background: 'rgba(0,0,0,0.8)', color: '#fff', fontSize: '9px', padding: '0 2px', borderRadius: '2px' }}>{skill.level}</div>
                                                     </div>
                                                     <div style={{ overflow: 'hidden' }}>
-                                                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#ddd', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                            {skill.name}
-                                                        </div>
+                                                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#ddd', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{skill.name}</div>
                                                         {skill.runeName && (
                                                             <div style={{ fontSize: '11px', color: getRuneColor(skill.runeGrade), display: 'flex', alignItems: 'center', gap: '3px' }}>
-                                                                <img src={skill.runeIcon} alt="" style={{ width: '12px', height: '12px' }} />
-                                                                {skill.runeName}
+                                                                <img src={skill.runeIcon} alt="" style={{ width: '12px', height: '12px' }} />{skill.runeName}
                                                             </div>
                                                         )}
                                                     </div>
@@ -943,25 +701,15 @@ export default function CharacterSearchPage() {
                                                         <div style={{ width: '40px', height: '40px', borderRadius: '4px', overflow: 'hidden', background: '#000', border: `1px solid ${getGradeColor(eq.grade)}`, marginBottom: '4px' }}>
                                                             <img src={eq.icon} alt={eq.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                         </div>
-                                                        {quality >= 0 && (
-                                                            <div style={{ fontSize: '11px', fontWeight: 'bold', color: qualityInfo.color, textAlign: 'center', whiteSpace: 'nowrap' }}>
-                                                                품질 {quality}
-                                                            </div>
-                                                        )}
-                                                        {mainStat && (
-                                                            <div style={{ fontSize: '10px', color: '#aaa', marginTop: '2px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                                                                {mainStat}
-                                                            </div>
-                                                        )}
+                                                        {quality >= 0 && <div style={{ fontSize: '11px', fontWeight: 'bold', color: qualityInfo.color, textAlign: 'center', whiteSpace: 'nowrap' }}>품질 {quality}</div>}
+                                                        {mainStat && <div style={{ fontSize: '10px', color: '#aaa', marginTop: '2px', textAlign: 'center', whiteSpace: 'nowrap' }}>{mainStat}</div>}
                                                     </div>
                                                     <div style={{ flex: 1, overflow: 'hidden' }}>
                                                         <div style={{ fontSize: '13px', fontWeight: 'bold', color: getGradeColor(eq.grade), marginBottom: '4px' }}>{eq.name}</div>
                                                         <div style={{ fontSize: '12px', color: '#ddd', lineHeight: '1.4' }}>
                                                             {options.length > 0 ? (
                                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                                                    {options.map((opt, i) => (
-                                                                        <div key={i}>{renderOption(opt, eq.type)}</div>
-                                                                    ))}
+                                                                    {options.map((opt, i) => <div key={i}>{renderOption(opt, eq.type)}</div>)}
                                                                 </div>
                                                             ) : <span style={{ color: '#666' }}>옵션 정보 없음</span>}
                                                         </div>

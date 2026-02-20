@@ -1,5 +1,6 @@
 package dev.j2m2n.backendserver.dtos;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -9,8 +10,8 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class LostArkCharacterDto {
-    // 기본 프로필
     private String serverName;
     private String characterName;
     private int characterLevel;
@@ -29,11 +30,14 @@ public class LostArkCharacterDto {
     private List<CardEffectDto> cardEffects;
     private List<SkillDto> skills;
     private ArkPassiveDto arkPassive;
-    private List<ArkGridEffectDto> arkGridEffects; // [추가] 아크 그리드 (T4 각인)
+
+    private List<T4EngravingDto> t4Engravings;
+    private List<ArkGridDto> arkGrids;
 
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class StatDto {
         private String type;
         private String value;
@@ -43,6 +47,7 @@ public class LostArkCharacterDto {
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class EquipmentDto {
         private String type;
         private String name;
@@ -54,6 +59,7 @@ public class LostArkCharacterDto {
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class GemDto {
         private int slot;
         private String name;
@@ -67,6 +73,7 @@ public class LostArkCharacterDto {
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class CardDto {
         private int slot;
         private String name;
@@ -78,6 +85,7 @@ public class LostArkCharacterDto {
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class CardEffectDto {
         private int index;
         private List<Integer> cardSlots;
@@ -87,6 +95,7 @@ public class LostArkCharacterDto {
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ItemDto {
         private String name;
         private String description;
@@ -95,6 +104,7 @@ public class LostArkCharacterDto {
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class SkillDto {
         private String name;
         private String icon;
@@ -110,6 +120,7 @@ public class LostArkCharacterDto {
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class TripodDto {
         private int tier;
         private int slot;
@@ -122,6 +133,7 @@ public class LostArkCharacterDto {
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ArkPassiveDto {
         private boolean isArkPassive;
         private List<ArkPassivePointDto> points;
@@ -131,6 +143,7 @@ public class LostArkCharacterDto {
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ArkPassivePointDto {
         private String name;
         private int value;
@@ -141,6 +154,7 @@ public class LostArkCharacterDto {
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ArkPassiveEffectDto {
         private String name;
         private String description;
@@ -148,14 +162,25 @@ public class LostArkCharacterDto {
         private String grade;
     }
 
-    // ▼▼▼ [추가] 아크 그리드 DTO ▼▼▼
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
-    public static class ArkGridEffectDto {
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class T4EngravingDto {
         private String name;
         private String description;
         private int level;
         private String grade;
+    }
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class ArkGridDto {
+        private String coreType;
+        private String effectName;
+        private int point;
+        private String icon;
     }
 }
