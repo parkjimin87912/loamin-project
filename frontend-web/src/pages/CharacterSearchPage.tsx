@@ -260,7 +260,6 @@ export default function CharacterSearchPage() {
             const grade = gradeMatch[1];
             const text = gradeMatch[2].trim();
 
-            // 🌟 팔찌 기본 특성(치명, 특화, 신속 등)인 경우 뱃지를 달지 않고 수치 색상만 적용
             const basicStatMatch = text.match(/^(치명|특화|신속|제압|인내|숙련)\s*\+?\s*(\d+)/);
             if (basicStatMatch) {
                 let valColor = '#fff';
@@ -277,7 +276,6 @@ export default function CharacterSearchPage() {
                 );
             }
 
-            // 기본 특성이 아니라 부여 효과 등이라면 원래대로 뱃지 출력
             return renderBadge(grade, text);
         }
 
@@ -431,7 +429,6 @@ export default function CharacterSearchPage() {
                     const titleText = typeof titleObj === 'string' ? stripHtml(titleObj) : "";
                     const contentLines = extractText(contentObj);
 
-                    // 팔찌 효과 완벽 파싱 (색상 등급 판별 및 멀티라인 병합)
                     if (titleText.includes("팔찌 효과")) {
                         const rawStr = typeof contentObj === 'string' ? contentObj : "";
                         const lines = rawStr.split(/<BR>|<br>/gi).map(s => s.trim()).filter(s => s);
@@ -471,7 +468,6 @@ export default function CharacterSearchPage() {
                     }
                 }
 
-                // 어빌리티 스톤 각인 효과 추출
                 if (typeof obj === 'object' && obj.type === "IndentStringGroup") {
                     const topStr = obj.value?.Element_000?.topStr || "";
                     if (topStr.includes("무작위 각인 효과")) {
@@ -673,6 +669,55 @@ export default function CharacterSearchPage() {
         );
     };
 
+    const getAggregatedCardEffects = () => {
+        if (!character?.cardEffects) return { stats: [], specials: [] };
+
+        const statsMap: Record<string, { statName: string, value: number, unit: string }> = {};
+        const specials = new Set<string>();
+
+        character.cardEffects.forEach(effect => {
+            effect.items.forEach(item => {
+                const desc = item.description.replace(/<[^>]*>?/gm, '').trim();
+                const lines = desc.split(/<br>|\n/i);
+
+                lines.forEach(line => {
+                    const cl = line.trim();
+                    if (!cl) return;
+
+                    const match = cl.match(/^(.*?)\s*([+-])\s*(\d+(?:\.\d+)?)(%?)$/);
+
+                    if (match) {
+                        const statName = match[1].trim();
+                        const sign = match[2];
+                        const val = parseFloat(match[3]);
+                        const unit = match[4];
+
+                        const key = `${statName}|${unit}`;
+                        if (!statsMap[key]) {
+                            statsMap[key] = { statName, value: 0, unit };
+                        }
+
+                        statsMap[key].value += (sign === '-' ? -val : val);
+                    } else {
+                        specials.add(cl);
+                    }
+                });
+            });
+        });
+
+        const stats = Object.values(statsMap).map(s => {
+            const sign = s.value > 0 ? '+' : '';
+            const valStr = s.value % 1 === 0 ? s.value.toString() : s.value.toFixed(2);
+            return `${s.statName} ${sign}${valStr}${s.unit}`;
+        });
+
+        return {
+            stats,
+            specials: Array.from(specials)
+        };
+    };
+
+    const tabs = ["전체", "스킬", "아크패시브", "각인", "원정대"];
     const leftEquipOrder = ["투구", "어깨", "상의", "하의", "장갑", "무기"];
     const rightEquipTypes = ["목걸이", "귀걸이", "반지", "어빌리티 스톤", "팔찌"];
 
@@ -682,16 +727,14 @@ export default function CharacterSearchPage() {
 
     const rightEquipments = character?.equipment.filter(eq => rightEquipTypes.includes(eq.type)) || [];
 
-    const tabs = ["전체", "스킬", "아크패시브", "각인", "원정대"];
-
-    // 전역으로 어빌리티 스톤의 각인 정보를 미리 추출 (각인 영역에서 매칭하기 위함)
     const abilityStoneEq = character?.equipment.find(eq => eq.type === "어빌리티 스톤");
     const globalStoneEngravings = abilityStoneEq ? parseTooltip(abilityStoneEq.tooltip).abilityEngravings : [];
 
-    // 감소 효과 제외 & 최대 5개까지만 노출되도록 필터링
     const activeEngravings = character?.t4Engravings
         ?.filter(e => !e.name.includes("감소"))
         .slice(0, 5) || [];
+
+    const arkPassiveTitleIcon = character?.arkPassive?.effects?.find(e => e.name === '깨달음')?.icon;
 
     return (
         <div className="container" style={{maxWidth: '1400px', margin: '0 auto', padding: '40px 20px'}}>
@@ -1051,7 +1094,6 @@ export default function CharacterSearchPage() {
                                 )}
                             </div>
 
-                            {/* 🌟 각인 영역 */}
                             <div style={{
                                 marginTop: '20px',
                                 background: 'var(--bg-card)',
@@ -1553,6 +1595,7 @@ export default function CharacterSearchPage() {
                                 )}
                             </div>
 
+                            {/* 🌟 카드 영역을 다시 보석 아래쪽으로 원상복구했습니다 */}
                             <div style={{
                                 background: 'var(--bg-card)',
                                 padding: '20px',
@@ -1566,33 +1609,63 @@ export default function CharacterSearchPage() {
                                     borderBottom: '1px solid rgba(255,255,255,0.1)',
                                     paddingBottom: '10px'
                                 }}>카드</h3>
-                                <div style={{display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '10px'}}>
-                                    {character.cards.map((card, index) => (
-                                        <div key={index} style={{width: '80px', flexShrink: 0, textAlign: 'center'}}>
-                                            <div style={{
-                                                width: '80px',
-                                                height: '110px',
-                                                borderRadius: '6px',
-                                                overflow: 'hidden',
-                                                marginBottom: '5px',
-                                                border: `1px solid ${getGradeColor(card.grade)}`
-                                            }}>
-                                                <img src={card.icon} alt={card.name}
-                                                     style={{width: '100%', height: '100%', objectFit: 'cover'}}/>
+
+                                <div style={{ display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                        {character.cards.map((card, index) => (
+                                            <div key={index} style={{ width: '80px', flexShrink: 0, textAlign: 'center' }}>
+                                                <div style={{ width: '80px', height: '110px', borderRadius: '6px', overflow: 'hidden', border: `1px solid ${getGradeColor(card.grade)}` }}>
+                                                    <img src={card.icon} alt={card.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div style={{marginTop: '10px'}}>
-                                    {character.cardEffects.map((effect, idx) => {
-                                        const lastItem = effect.items[effect.items.length - 1];
-                                        return lastItem ? (
-                                            <div key={idx}
-                                                 style={{fontSize: '14px', color: '#81c784', fontWeight: 'bold'}}>
-                                                {lastItem.name}
-                                            </div>
-                                        ) : null;
-                                    })}
+                                        ))}
+                                    </div>
+
+                                    <div style={{
+                                        flex: 1,
+                                        minWidth: '250px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        justifyContent: 'center',
+                                        borderLeft: '1px solid rgba(255,255,255,0.1)',
+                                        paddingLeft: '24px'
+                                    }}>
+                                        {(() => {
+                                            const { stats, specials } = getAggregatedCardEffects();
+
+                                            if (stats.length === 0 && specials.length === 0) {
+                                                return character.cardEffects.map((effect, idx) => {
+                                                    const lastItem = effect.items[effect.items.length - 1];
+                                                    return lastItem ? (
+                                                        <div key={idx} style={{ fontSize: '15px', color: '#81c784', fontWeight: 'bold', marginBottom: '4px' }}>
+                                                            {lastItem.name}
+                                                        </div>
+                                                    ) : null;
+                                                });
+                                            }
+
+                                            return (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                    <div style={{ fontSize: '15px', color: '#81c784', fontWeight: 'bold' }}>
+                                                        {character.cardEffects.map(e => e.items[e.items.length - 1]?.name).filter(Boolean).join(' / ')}
+                                                    </div>
+
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                        {stats.map((stat, idx) => (
+                                                            <div key={`stat-${idx}`} style={{ fontSize: '14px', color: '#ddd' }}>
+                                                                • {stat}
+                                                            </div>
+                                                        ))}
+                                                        {specials.map((sp, idx) => (
+                                                            <div key={`sp-${idx}`} style={{ fontSize: '14px', color: '#ddd' }}>
+                                                                • {sp}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
                                 </div>
                             </div>
 
