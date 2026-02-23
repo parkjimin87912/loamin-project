@@ -174,41 +174,57 @@ public class LostArkApiService {
 
             // Ark Grids
             List<LostArkCharacterDto.ArkGridDto> arkGrids = new ArrayList<>();
+            List<LostArkCharacterDto.ArkGridEffectDto> arkGridEffects = new ArrayList<>(); // 🌟 아크 그리드 전체 효과 리스트
+
             JsonNode arkGridRaw = root.path("ArkGrid");
-            if (!arkGridRaw.isMissingNode() && arkGridRaw.has("Slots")) {
-                arkGridRaw.path("Slots").forEach(slot -> {
-                    String fullName = slot.path("Name").asText(""); // ex: "질서의 해 코어 : 그라비티 코어"
-                    String icon = slot.path("Icon").asText("");
-                    int point = slot.path("Point").asInt(0);
-                    String tooltip = slot.path("Tooltip").asText(""); // 🌟 툴팁 필드 추가
+            if (!arkGridRaw.isMissingNode()) {
+                if (arkGridRaw.has("Slots")) {
+                    arkGridRaw.path("Slots").forEach(slot -> {
+                        String fullName = slot.path("Name").asText(""); // ex: "질서의 해 코어 : 그라비티 코어"
+                        String icon = slot.path("Icon").asText("");
+                        int point = slot.path("Point").asInt(0);
+                        String tooltip = slot.path("Tooltip").asText(""); // 🌟 툴팁 필드 추가
 
-                    String coreType = fullName;
-                    String effectName = "알 수 없음";
+                        String coreType = fullName;
+                        String effectName = "알 수 없음";
 
-                    if (fullName.contains(" : ")) {
-                        String[] parts = fullName.split(" : ", 2);
-                        coreType = parts[0].trim();
-                        effectName = parts[1].trim();
-                    }
+                        if (fullName.contains(" : ")) {
+                            String[] parts = fullName.split(" : ", 2);
+                            coreType = parts[0].trim();
+                            effectName = parts[1].trim();
+                        }
 
-                    // 🌟 Gems 파싱 추가
-                    List<LostArkCharacterDto.ArkGridGemDto> gemsList = new ArrayList<>();
-                    if (slot.has("Gems")) {
-                        slot.path("Gems").forEach(gem -> {
-                            gemsList.add(new LostArkCharacterDto.ArkGridGemDto(
-                                    gem.path("Index").asInt(0),
-                                    gem.path("Icon").asText(""),
-                                    gem.path("IsActive").asBoolean(false),
-                                    gem.path("Grade").asText(""),
-                                    gem.path("Tooltip").asText("")
-                            ));
-                        });
-                    }
+                        // 🌟 Gems 파싱 추가
+                        List<LostArkCharacterDto.ArkGridGemDto> gemsList = new ArrayList<>();
+                        if (slot.has("Gems")) {
+                            slot.path("Gems").forEach(gem -> {
+                                gemsList.add(new LostArkCharacterDto.ArkGridGemDto(
+                                        gem.path("Index").asInt(0),
+                                        gem.path("Icon").asText(""),
+                                        gem.path("IsActive").asBoolean(false),
+                                        gem.path("Grade").asText(""),
+                                        gem.path("Tooltip").asText("")
+                                ));
+                            });
+                        }
 
-                    arkGrids.add(new LostArkCharacterDto.ArkGridDto(coreType, effectName, point, icon, tooltip, gemsList));
-                });
+                        arkGrids.add(new LostArkCharacterDto.ArkGridDto(coreType, effectName, point, icon, tooltip, gemsList));
+                    });
+                }
+
+                // 🌟 Effects 파싱 추가
+                if (arkGridRaw.has("Effects")) {
+                    arkGridRaw.path("Effects").forEach(effect -> {
+                        arkGridEffects.add(new LostArkCharacterDto.ArkGridEffectDto(
+                                effect.path("Name").asText(""),
+                                effect.path("Level").asInt(0),
+                                effect.path("Tooltip").asText("")
+                        ));
+                    });
+                }
             }
             dto.setArkGrids(arkGrids);
+            dto.setArkGridEffects(arkGridEffects); // 🌟 DTO에 설정
 
             return dto;
         } catch (Exception e) {

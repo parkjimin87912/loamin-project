@@ -35,6 +35,7 @@ public class LostArkCharacterDto {
 
     private List<T4EngravingDto> t4Engravings;
     private List<ArkGridDto> arkGrids;
+    private List<ArkGridEffectDto> arkGridEffects; // 🌟 아크 그리드 전체 효과 추가
 
     @Data
     @AllArgsConstructor
@@ -202,6 +203,16 @@ public class LostArkCharacterDto {
         @JsonProperty("isActive")
         private boolean isActive;
         private String grade;
+        private String tooltip;
+    }
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class ArkGridEffectDto {
+        private String name;
+        private int level;
         private String tooltip;
     }
 }
