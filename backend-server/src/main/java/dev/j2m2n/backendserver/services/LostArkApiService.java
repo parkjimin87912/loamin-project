@@ -131,11 +131,12 @@ public class LostArkApiService {
                     }
                 });
                 JsonNode rune = s.path("Rune");
-                skills.add(new LostArkCharacterDto.SkillDto(s.path("Name").asText(""), s.path("Icon").asText(""), s.path("Level").asInt(0), s.path("Type").asText(""), s.path("IsAwakening").asBoolean(false), tripods, rune.path("Name").asText(null), rune.path("Icon").asText(null), rune.path("Grade").asText(null)));
+                // 🌟 툴팁 필드 추가
+                skills.add(new LostArkCharacterDto.SkillDto(s.path("Name").asText(""), s.path("Icon").asText(""), s.path("Level").asInt(0), s.path("Type").asText(""), s.path("IsAwakening").asBoolean(false), tripods, rune.path("Name").asText(null), rune.path("Icon").asText(null), rune.path("Grade").asText(null), s.path("Tooltip").asText("")));
             });
             dto.setSkills(skills);
 
-            // ArkPassive 🌟 (객체 생성 방식 수정 및 Title 파싱 추가)
+            // ArkPassive
             LostArkCharacterDto.ArkPassiveDto arkPassive = new LostArkCharacterDto.ArkPassiveDto();
             arkPassive.setPoints(new ArrayList<>());
             arkPassive.setEffects(new ArrayList<>());
@@ -143,8 +144,6 @@ public class LostArkApiService {
             JsonNode arkRaw = root.path("ArkPassive");
             if (!arkRaw.isMissingNode()) {
                 arkPassive.setArkPassive(arkRaw.path("IsArkPassive").asBoolean(false));
-
-                // 🌟 JSON의 "Title" 값을 읽어서 객체에 넣어줍니다 (예: "중력 수련")
                 arkPassive.setTitle(arkRaw.path("Title").asText(null));
 
                 List<LostArkCharacterDto.ArkPassivePointDto> points = new ArrayList<>();
@@ -153,9 +152,16 @@ public class LostArkApiService {
                     int rank = 0, level = 0;
                     Matcher rm = Pattern.compile("(\\d+)랭크").matcher(desc); if (rm.find()) rank = Integer.parseInt(rm.group(1));
                     Matcher lm = Pattern.compile("(\\d+)레벨").matcher(desc); if (lm.find()) level = Integer.parseInt(lm.group(1));
-                    points.add(new LostArkCharacterDto.ArkPassivePointDto(p.path("Name").asText(""), p.path("Value").asInt(0), rank, level));
+                    // 🌟 툴팁 필드 추가
+                    points.add(new LostArkCharacterDto.ArkPassivePointDto(p.path("Name").asText(""), p.path("Value").asInt(0), rank, level, p.path("Tooltip").asText("")));
                 });
                 arkPassive.setPoints(points);
+
+                List<LostArkCharacterDto.ArkPassiveEffectDto> effects = new ArrayList<>();
+                arkRaw.path("Effects").forEach(e -> {
+                    effects.add(new LostArkCharacterDto.ArkPassiveEffectDto(e.path("Name").asText(""), e.path("Description").asText(""), e.path("Icon").asText(""), e.path("Grade").asText(""), e.path("Tooltip").asText("")));
+                });
+                arkPassive.setEffects(effects);
             }
             dto.setArkPassive(arkPassive);
 

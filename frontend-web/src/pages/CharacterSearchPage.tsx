@@ -46,17 +46,26 @@ interface CardEffect {
     items: { name: string; description: string }[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+interface Tripod {
+    tier: number;
+    slot: number;
+    name: string;
+    icon: string;
+    level: number;
+    isSelected: boolean;
+}
+
 interface Skill {
     name: string;
     icon: string;
     level: number;
     type: string;
     isAwakening: boolean;
-    tripods: any[];
+    tripods: Tripod[];
     runeName: string;
     runeIcon: string;
     runeGrade: string;
+    tooltip: string; // 🌟 툴팁 필드 추가
 }
 
 interface ArkPassivePoint {
@@ -64,12 +73,14 @@ interface ArkPassivePoint {
     value: number;
     rank: number;
     level: number;
+    tooltip: string; // 🌟 툴팁 필드 추가
 }
 
 interface ArkPassive {
     isArkPassive: boolean;
     points: ArkPassivePoint[];
     title?: string;
+    effects?: { name: string; icon: string; description: string; tooltip: string }[];
 }
 
 interface T4Engraving {
@@ -84,6 +95,7 @@ interface ArkGrid {
     effectName: string;
     point: number;
     icon: string;
+    tooltip: string; // 🌟 툴팁 필드 추가
 }
 
 interface CharacterInfo {
@@ -669,6 +681,416 @@ export default function CharacterSearchPage() {
         );
     };
 
+    const renderArkPassiveTab = () => {
+        if (!character?.arkPassive) return <div style={{textAlign: 'center', color: '#aaa', padding: '20px'}}>아크패시브 정보가 없습니다.</div>;
+
+        const { points, effects } = character.arkPassive;
+
+        // 🌟 아크패시브 포인트 요약 (진화, 깨달음, 도약)
+        const pointSummary = points.reduce((acc, p) => {
+            acc[p.name] = p.value;
+            return acc;
+        }, {} as Record<string, number>);
+
+        // 🌟 효과 그룹화 (타입 -> 티어)
+        const effectsByTypeAndTier: Record<string, Record<number, typeof effects>> = {
+            '진화': {},
+            '깨달음': {},
+            '도약': {}
+        };
+
+        if (effects) {
+            effects.forEach(effect => {
+                let type = '';
+                if (effect.description.includes('진화')) type = '진화';
+                else if (effect.description.includes('깨달음')) type = '깨달음';
+                else if (effect.description.includes('도약')) type = '도약';
+
+                if (type) {
+                    const tierMatch = effect.description.match(/(\d+)티어/);
+                    const tier = tierMatch ? parseInt(tierMatch[1], 10) : 99; // 99 for unknown/other
+
+                    if (!effectsByTypeAndTier[type][tier]) {
+                        effectsByTypeAndTier[type][tier] = [];
+                    }
+                    effectsByTypeAndTier[type][tier].push(effect);
+                }
+            });
+        }
+
+        const getTypeColor = (type: string) => {
+            if (type === '진화') return '#eab308';
+            if (type === '깨달음') return '#3b82f6';
+            if (type === '도약') return '#22c55e';
+            return '#aaa';
+        };
+
+        const getTypeBg = (type: string) => {
+            if (type === '진화') return 'rgba(234, 179, 8, 0.1)';
+            if (type === '깨달음') return 'rgba(59, 130, 246, 0.1)';
+            if (type === '도약') return 'rgba(34, 197, 94, 0.1)';
+            return 'rgba(255, 255, 255, 0.05)';
+        };
+
+        return (
+            <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '20px' }}>
+                {/* 포인트 요약 */}
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    gap: '20px',
+                    marginBottom: '30px'
+                }}>
+                    {['진화', '깨달음', '도약'].map(type => (
+                        <div key={type} style={{
+                            background: 'var(--bg-card)',
+                            border: `1px solid ${getTypeColor(type)}`,
+                            borderRadius: '12px',
+                            padding: '15px 25px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            boxShadow: `0 0 10px ${getTypeBg(type)}`
+                        }}>
+                            <img 
+                                src={type === '진화' ? 'https://static.lo4.app/icons/arkpassive_evolution.png' : 
+                                     type === '깨달음' ? 'https://static.lo4.app/icons/arkpassive_enlightenment.png' : 
+                                     'https://static.lo4.app/icons/arkpassive_leap.png'} 
+                                alt={type}
+                                style={{ width: '24px', height: '24px' }}
+                            />
+                            <span style={{ fontWeight: 'bold', color: getTypeColor(type), fontSize: '18px' }}>{type}</span>
+                            <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#fff' }}>{pointSummary[type] || 0}</span>
+                        </div>
+                    ))}
+                </div>
+
+                {/* 효과 목록 (3열 레이아웃) */}
+                <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(3, 1fr)', // 3열 고정
+                    gap: '20px',
+                    alignItems: 'start' // 상단 정렬
+                }}>
+                    {['진화', '깨달음', '도약'].map(type => {
+                        const tiers = Object.keys(effectsByTypeAndTier[type]).map(Number).sort((a, b) => a - b);
+                        
+                        return (
+                            <div key={type} style={{
+                                background: 'var(--bg-card)',
+                                borderRadius: '12px',
+                                padding: '20px',
+                                border: `1px solid ${getTypeColor(type)}`,
+                                minHeight: '200px'
+                            }}>
+                                <h3 style={{ 
+                                    color: getTypeColor(type), 
+                                    borderBottom: `1px solid ${getTypeColor(type)}`, 
+                                    paddingBottom: '10px', 
+                                    marginBottom: '20px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    fontSize: '20px'
+                                }}>
+                                    <img 
+                                        src={type === '진화' ? 'https://static.lo4.app/icons/arkpassive_evolution.png' : 
+                                             type === '깨달음' ? 'https://static.lo4.app/icons/arkpassive_enlightenment.png' : 
+                                             'https://static.lo4.app/icons/arkpassive_leap.png'} 
+                                        alt={type}
+                                        style={{ width: '24px', height: '24px' }}
+                                    />
+                                    {type}
+                                </h3>
+                                
+                                {tiers.length > 0 ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                        {tiers.map(tier => (
+                                            <div key={tier}>
+                                                {tier !== 99 && (
+                                                    <div style={{ 
+                                                        fontSize: '14px', 
+                                                        color: '#aaa', 
+                                                        marginBottom: '8px', 
+                                                        fontWeight: 'bold',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '6px'
+                                                    }}>
+                                                        <span style={{ 
+                                                            display: 'inline-block', 
+                                                            width: '4px', 
+                                                            height: '12px', 
+                                                            background: getTypeColor(type),
+                                                            borderRadius: '2px'
+                                                        }}></span>
+                                                        Tier {tier}
+                                                    </div>
+                                                )}
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                                    {effectsByTypeAndTier[type][tier].map((effect, idx) => {
+                                                        const cleanDesc = effect.description.replace(/<[^>]*>/g, '');
+                                                        const nameMatch = cleanDesc.match(/\d+티어\s+(.+)/);
+                                                        const displayName = nameMatch ? nameMatch[1] : cleanDesc;
+
+                                                        // 레벨 추출 (예: "중력 충격 Lv.1" -> "Lv.1")
+                                                        const levelMatch = displayName.match(/Lv\.(\d+)/);
+                                                        const level = levelMatch ? levelMatch[1] : "";
+                                                        const nameOnly = displayName.replace(/Lv\.\d+/, '').trim();
+
+                                                        return (
+                                                            <div key={idx} style={{
+                                                                background: getTypeBg(type),
+                                                                border: `1px solid ${getTypeColor(type)}`,
+                                                                borderRadius: '8px',
+                                                                padding: '10px',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '10px'
+                                                            }}>
+                                                                <div style={{
+                                                                    width: '36px',
+                                                                    height: '36px',
+                                                                    borderRadius: '6px',
+                                                                    overflow: 'hidden',
+                                                                    border: '1px solid #000',
+                                                                    flexShrink: 0
+                                                                }}>
+                                                                    <img src={effect.icon} alt={effect.name} style={{ width: '100%', height: '100%', objectFit: 'cover', background: '#000' }} />
+                                                                </div>
+                                                                <div style={{ flex: 1, overflow: 'hidden' }}>
+                                                                    <div style={{ fontWeight: 'bold', color: '#fff', fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                        {nameOnly}
+                                                                    </div>
+                                                                    {level && (
+                                                                        <div style={{ fontSize: '12px', color: getTypeColor(type), fontWeight: 'bold' }}>
+                                                                            Lv.{level}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div style={{ textAlign: 'center', color: '#666', padding: '20px 0' }}>활성화된 효과 없음</div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    };
+
+    const renderArkGridTab = () => {
+        if (!character?.arkGrids || character.arkGrids.length === 0) {
+            return <div style={{textAlign: 'center', color: '#aaa', padding: '20px'}}>아크 그리드 정보가 없습니다.</div>;
+        }
+
+        // 🌟 젬 정보 매핑을 위한 준비
+        // 1. 젬을 슬롯 번호나 이름으로 쉽게 찾을 수 있도록 맵 생성 (필요시)
+        // 2. 아크 그리드 효과 이름과 매칭되는 젬 찾기
+        //    - 아크 그리드 효과 이름(예: "그라비티 코어")이 젬 이름(예: "7레벨 겁화의 보석 (그라비티 코어)")에 포함되는지 확인
+        //    - 또는 젬의 스킬 아이콘과 아크 그리드 아이콘 비교 (정확하지 않을 수 있음)
+        //    - 가장 확실한 건 이름 매칭
+
+        // 🌟 아크 그리드 정렬 순서 정의
+        const gridOrder = [
+            "질서의 해 코어",
+            "혼돈의 해 코어",
+            "질서의 달 코어",
+            "혼돈의 달 코어",
+            "질서의 별 코어",
+            "혼돈의 별 코어"
+        ];
+
+        // 🌟 정렬된 그리드 목록 생성
+        const sortedGrids = [...character.arkGrids].sort((a, b) => {
+            const indexA = gridOrder.indexOf(a.coreType);
+            const indexB = gridOrder.indexOf(b.coreType);
+            // 정의된 순서에 없으면 뒤로 보냄
+            if (indexA === -1) return 1;
+            if (indexB === -1) return -1;
+            return indexA - indexB;
+        });
+
+        // 🌟 총 젬 스탯 효과 계산 (예시: 멸화/홍염 개수 등)
+        // 실제 스탯 효과(공격력 증가 등)는 API에서 직접 주지 않으면 계산하기 복잡함.
+        // 여기서는 "장착된 젬 요약"을 보여주는 것으로 대체하거나, 
+        // 아크 그리드 포인트 합계를 보여줄 수 있음.
+        const totalPoints = sortedGrids.reduce((sum, grid) => sum + grid.point, 0);
+
+        return (
+            <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+                {/* 🌟 상단 요약 섹션 */}
+                <div style={{
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '12px',
+                    padding: '20px',
+                    marginBottom: '30px',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    gap: '30px'
+                }}>
+                    <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '14px', color: '#aaa', marginBottom: '5px' }}>총 아크 그리드 포인트</div>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f97316' }}>{totalPoints}P</div>
+                    </div>
+                    <div style={{ width: '1px', height: '40px', background: 'rgba(255,255,255,0.1)' }}></div>
+                    <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '14px', color: '#aaa', marginBottom: '5px' }}>장착 젬 요약</div>
+                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#fff' }}>{getGemSummary() || '-'}</div>
+                    </div>
+                </div>
+
+                {/* 🌟 아크 그리드 리스트 (해 -> 달 -> 별 순서) */}
+                <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', 
+                    gap: '20px' 
+                }}>
+                    {sortedGrids.map((grid, idx) => {
+                        // 해당 그리드 효과와 매칭되는 젬 찾기
+                        // 젬 이름에 그리드 효과 이름이 포함되어 있는지 확인 (가장 단순한 매칭)
+                        // 예: grid.effectName = "그라비티 코어", gem.name = "10레벨 멸화의 보석 (그라비티 코어)"
+                        // 괄호 안의 스킬명을 추출해서 비교하는 것이 더 정확할 수 있음.
+                        
+                        const matchedGem = character.gems.find(gem => {
+                            // 젬 이름에서 괄호 안의 텍스트 추출
+                            const match = gem.name.match(/\((.*?)\)/);
+                            if (match) {
+                                return match[1] === grid.effectName;
+                            }
+                            return false;
+                        });
+
+                        // 🌟 툴팁에서 효과 설명 추출
+                        let effectDescription = "";
+                        try {
+                            const tooltipJson = JSON.parse(grid.tooltip);
+                            // Element_006이 보통 "코어 옵션" (ItemPartBox)
+                            if (tooltipJson.Element_006?.value?.Element_001) {
+                                effectDescription = tooltipJson.Element_006.value.Element_001;
+                            }
+                        } catch (e) {}
+
+                        return (
+                            <div key={idx} style={{
+                                background: 'var(--bg-card)',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '12px',
+                                padding: '20px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '15px'
+                            }}>
+                                {/* 코어 정보 */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                    <div style={{
+                                        width: '56px',
+                                        height: '56px',
+                                        borderRadius: '12px',
+                                        overflow: 'hidden',
+                                        border: '1px solid #333',
+                                        flexShrink: 0,
+                                        background: '#000'
+                                    }}>
+                                        <img src={grid.icon} alt={grid.effectName} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontSize: '13px', color: '#aaa', marginBottom: '4px' }}>{grid.coreType}</div>
+                                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#fff', marginBottom: '6px' }}>{grid.effectName}</div>
+                                        <div style={{
+                                            display: 'inline-block',
+                                            background: 'rgba(249, 115, 22, 0.15)',
+                                            border: '1px solid rgba(249, 115, 22, 0.3)',
+                                            padding: '2px 10px',
+                                            borderRadius: '4px',
+                                            fontSize: '13px',
+                                            fontWeight: 'bold',
+                                            color: '#f97316'
+                                        }}>
+                                            {grid.point}P
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 🌟 코어 효과 설명 (툴팁에서 추출) */}
+                                {effectDescription && (
+                                    <div style={{
+                                        background: 'rgba(0, 0, 0, 0.2)',
+                                        borderRadius: '8px',
+                                        padding: '10px',
+                                        fontSize: '12px',
+                                        color: '#ddd',
+                                        lineHeight: '1.5'
+                                    }} dangerouslySetInnerHTML={{ __html: effectDescription }} />
+                                )}
+
+                                {/* 매칭된 젬 정보 */}
+                                {matchedGem ? (
+                                    <div style={{
+                                        background: 'rgba(255, 255, 255, 0.03)',
+                                        borderRadius: '8px',
+                                        padding: '10px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '10px',
+                                        border: `1px solid ${getGradeColor(matchedGem.grade)}`
+                                    }}>
+                                        <div style={{
+                                            position: 'relative',
+                                            width: '40px',
+                                            height: '40px',
+                                            borderRadius: '4px',
+                                            overflow: 'hidden',
+                                            flexShrink: 0
+                                        }}>
+                                            <img src={matchedGem.icon} alt={matchedGem.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            <div style={{
+                                                position: 'absolute',
+                                                bottom: 0,
+                                                right: 0,
+                                                background: 'rgba(0,0,0,0.7)',
+                                                color: '#fff',
+                                                fontSize: '11px',
+                                                padding: '0 3px',
+                                                borderRadius: '3px 0 0 0'
+                                            }}>{matchedGem.level}</div>
+                                        </div>
+                                        <div style={{ flex: 1, overflow: 'hidden' }}>
+                                            <div style={{ fontSize: '13px', color: getGradeColor(matchedGem.grade), fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {matchedGem.name}
+                                            </div>
+                                            {/* 젬 효과 요약 (예: 피해 증가 40%) - 툴팁 파싱 필요하지만 여기선 생략하거나 간단히 표시 */}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div style={{
+                                        background: 'rgba(255, 255, 255, 0.03)',
+                                        borderRadius: '8px',
+                                        padding: '10px',
+                                        textAlign: 'center',
+                                        color: '#666',
+                                        fontSize: '13px'
+                                    }}>
+                                        장착된 젬 없음
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    };
+
     const getAggregatedCardEffects = () => {
         if (!character?.cardEffects) return { stats: [], specials: [] };
 
@@ -717,7 +1139,275 @@ export default function CharacterSearchPage() {
         };
     };
 
-    const tabs = ["전체", "스킬", "아크패시브", "각인", "원정대"];
+    const renderSkillTab = () => {
+        if (!character) return null;
+
+        // 🌟 스킬 정렬 로직 변경: 레벨순 -> 장착순 (API에서 오는 순서 그대로 사용)
+        // 단, 필터링(레벨 2 이상, 룬 장착, 각성기)은 유지
+        const sortedSkills = character.skills
+            .filter(skill => skill.level >= 2 || skill.runeName || skill.isAwakening);
+            // .sort((a, b) => b.level - a.level); // 🌟 정렬 제거
+
+        // 🌟 스킬 요약 정보 계산
+        let headAttackCount = 0;
+        let backAttackCount = 0;
+        let pushImmuneCount = 0; // 경직 면역
+        let destrLv2Count = 0;
+        let destrLv1Count = 0;
+        let counterCount = 0;
+        const staggerCounts: { [key: string]: number } = { '최상': 0, '상': 0, '중상': 0, '중': 0, '하': 0 };
+
+        sortedSkills.forEach(skill => {
+            const attrs = parseSkillTooltip(skill.tooltip);
+            if (attrs['HeadAttack']) headAttackCount++;
+            if (attrs['BackAttack']) backAttackCount++;
+            if (attrs['SuperArmor'] && attrs['SuperArmor'].includes("경직 면역")) pushImmuneCount++;
+            if (attrs['Destruction']) {
+                if (attrs['Destruction'].includes("Lv.2") || attrs['Destruction'].includes("2")) destrLv2Count++;
+                else if (attrs['Destruction'].includes("Lv.1") || attrs['Destruction'].includes("1")) destrLv1Count++;
+            }
+            if (attrs['Counter']) counterCount++;
+            if (attrs['Stagger']) {
+                const val = attrs['Stagger'];
+                if (staggerCounts[val] !== undefined) staggerCounts[val]++;
+            }
+        });
+
+        return (
+            <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+                padding: '20px',
+                maxWidth: '1200px',
+                margin: '0 auto'
+            }}>
+                {/* 🌟 스킬 요약 섹션 */}
+                <div style={{
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '12px',
+                    padding: '15px',
+                    marginBottom: '10px',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '15px',
+                    justifyContent: 'center',
+                    fontSize: '14px',
+                    color: '#ddd'
+                }}>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <span style={{ color: '#64b5f6', fontWeight: 'bold' }}>헤드어택</span>
+                        <span style={{ background: 'rgba(33, 150, 243, 0.2)', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold', color: '#fff' }}>{headAttackCount}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <span style={{ color: '#e57373', fontWeight: 'bold' }}>백어택</span>
+                        <span style={{ background: 'rgba(244, 67, 54, 0.2)', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold', color: '#fff' }}>{backAttackCount}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <span style={{ color: '#ba68c8', fontWeight: 'bold' }}>경직면역</span>
+                        <span style={{ background: 'rgba(156, 39, 176, 0.2)', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold', color: '#fff' }}>{pushImmuneCount}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <span style={{ color: '#ffc107', fontWeight: 'bold' }}>카운터</span>
+                        <span style={{ background: 'rgba(255, 193, 7, 0.2)', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold', color: '#fff' }}>{counterCount}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <span style={{ color: '#fff', fontWeight: 'bold' }}>파괴</span>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                            <span style={{ background: 'rgba(255, 255, 255, 0.1)', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>Lv.2 <span style={{ color: '#fff', fontWeight: 'bold' }}>{destrLv2Count}</span></span>
+                            <span style={{ background: 'rgba(255, 255, 255, 0.1)', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>Lv.1 <span style={{ color: '#fff', fontWeight: 'bold' }}>{destrLv1Count}</span></span>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <span style={{ color: '#fff', fontWeight: 'bold' }}>무력화</span>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                            {['최상', '상', '중상', '중', '하'].map(rank => (
+                                staggerCounts[rank] > 0 && (
+                                    <span key={rank} style={{ background: 'rgba(255, 255, 255, 0.1)', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>
+                                        {rank} <span style={{ color: '#fff', fontWeight: 'bold' }}>{staggerCounts[rank]}</span>
+                                    </span>
+                                )
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {sortedSkills.map((skill, idx) => {
+                    // Find gems for this skill
+                    const skillGems = character.gems.filter(gem => {
+                        let gemSkillIcon = gem.skillIcon;
+                        if (!gemSkillIcon) {
+                            gemSkillIcon = findSkillIconFallback(gem.tooltip, character.skills) || undefined;
+                        }
+                        return gemSkillIcon === skill.icon;
+                    });
+                    
+                    // Sort gems: Damage (멸화/겁화) first, then Cooldown (홍염/작열)
+                    skillGems.sort((a, b) => {
+                         const isDmgA = isDamageGem(a);
+                         const isDmgB = isDamageGem(b);
+                         if (isDmgA && !isDmgB) return -1;
+                         if (!isDmgA && isDmgB) return 1;
+                         return b.level - a.level;
+                    });
+
+                    const attributes = parseSkillTooltip(skill.tooltip);
+
+                    return (
+                        <div key={idx} style={{
+                            background: 'var(--bg-card)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '12px',
+                            padding: '15px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '10px'
+                        }}>
+                            <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                                <div style={{position: 'relative', width: '48px', height: '48px'}}>
+                                    <img src={skill.icon} alt={skill.name} style={{width: '100%', height: '100%', borderRadius: '8px'}} />
+                                    <div style={{
+                                        position: 'absolute',
+                                        bottom: -5,
+                                        right: -5,
+                                        background: '#000',
+                                        color: '#fff',
+                                        fontSize: '12px',
+                                        padding: '2px 6px',
+                                        borderRadius: '4px',
+                                        border: '1px solid #333'
+                                    }}>{skill.level}</div>
+                                </div>
+                                <div>
+                                    <div style={{fontWeight: 'bold', color: '#fff', fontSize: '16px'}}>{skill.name}</div>
+                                    <div style={{fontSize: '12px', color: '#aaa'}}>{skill.type} {skill.isAwakening ? '[각성기]' : ''}</div>
+                                </div>
+                                
+                                {skill.runeName && (
+                                    <div style={{marginLeft: '20px', display: 'flex', alignItems: 'center', gap: '6px'}}>
+                                        <img src={skill.runeIcon} alt={skill.runeName} style={{width: '24px', height: '24px'}} />
+                                        <div style={{fontSize: '12px', color: getRuneColor(skill.runeGrade)}}>{skill.runeName}</div>
+                                    </div>
+                                )}
+
+                                <div style={{ display: 'flex', gap: '6px', marginLeft: '20px', flexWrap: 'wrap' }}>
+                                    {attributes['Stagger'] && (
+                                        <span style={{ fontSize: '11px', background: 'rgba(255, 255, 255, 0.1)', padding: '2px 6px', borderRadius: '4px', color: '#ddd' }}>
+                                            무력화: <span style={{ color: '#fff', fontWeight: 'bold' }}>{attributes['Stagger']}</span>
+                                        </span>
+                                    )}
+                                    {attributes['Destruction'] && (
+                                        <span style={{ fontSize: '11px', background: 'rgba(255, 255, 255, 0.1)', padding: '2px 6px', borderRadius: '4px', color: '#ddd' }}>
+                                            파괴: <span style={{ color: '#fff', fontWeight: 'bold' }}>{attributes['Destruction']}</span>
+                                        </span>
+                                    )}
+                                    {attributes['Counter'] && (
+                                        <span style={{ fontSize: '11px', background: 'rgba(255, 193, 7, 0.2)', padding: '2px 6px', borderRadius: '4px', color: '#ffc107', fontWeight: 'bold' }}>
+                                            카운터
+                                        </span>
+                                    )}
+                                    {attributes['HeadAttack'] && (
+                                        <span style={{ fontSize: '11px', background: 'rgba(33, 150, 243, 0.2)', padding: '2px 6px', borderRadius: '4px', color: '#64b5f6', fontWeight: 'bold' }}>
+                                            헤드어택
+                                        </span>
+                                    )}
+                                    {attributes['BackAttack'] && (
+                                        <span style={{ fontSize: '11px', background: 'rgba(244, 67, 54, 0.2)', padding: '2px 6px', borderRadius: '4px', color: '#e57373', fontWeight: 'bold' }}>
+                                            백어택
+                                        </span>
+                                    )}
+                                    {attributes['SuperArmor'] && (
+                                        <span style={{ fontSize: '11px', background: 'rgba(156, 39, 176, 0.2)', padding: '2px 6px', borderRadius: '4px', color: '#ba68c8', fontWeight: 'bold' }}>
+                                            {attributes['SuperArmor']}
+                                        </span>
+                                    )}
+                                </div>
+
+                                {skillGems.length > 0 && (
+                                    <div style={{marginLeft: 'auto', display: 'flex', gap: '8px'}}>
+                                        {skillGems.map((gem, gIdx) => (
+                                            <div key={gIdx} style={{
+                                                position: 'relative',
+                                                width: '36px',
+                                                height: '36px',
+                                                borderRadius: '4px',
+                                                overflow: 'hidden',
+                                                border: `1px solid ${getGradeColor(gem.grade)}`,
+                                                background: isDamageGem(gem) ? 'rgba(255, 87, 34, 0.15)' : 'rgba(33, 150, 243, 0.15)'
+                                            }} title={gem.name}>
+                                                <img src={gem.icon} alt={gem.name} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+                                                <div style={{
+                                                    position: 'absolute',
+                                                    bottom: 0,
+                                                    right: 0,
+                                                    background: 'rgba(0,0,0,0.7)',
+                                                    color: '#fff',
+                                                    fontSize: '10px',
+                                                    padding: '0 3px',
+                                                    borderRadius: '3px 0 0 0'
+                                                }}>{gem.level}</div>
+                                                <div style={{
+                                                    position: 'absolute',
+                                                    top: 0,
+                                                    left: 0,
+                                                    background: isDamageGem(gem) ? '#ff5722' : '#2196f3',
+                                                    color: '#fff',
+                                                    fontSize: '9px',
+                                                    padding: '0 2px',
+                                                    fontWeight: 'bold'
+                                                }}>
+                                                    {isDamageGem(gem) ? (gem.name.includes("겁화") ? "겁" : "멸") : (gem.name.includes("작열") ? "작" : "홍")}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {!skill.isAwakening && skill.tripods && skill.tripods.length > 0 && (
+                                <div style={{display: 'flex', gap: '10px', marginTop: '5px'}}>
+                                    {skill.tripods.sort((a, b) => a.tier - b.tier).map((tripod, tIdx) => (
+                                        <div key={tIdx} style={{
+                                            flex: 1,
+                                            background: 'rgba(255,255,255,0.05)',
+                                            borderRadius: '6px',
+                                            padding: '8px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px'
+                                        }}>
+                                            <img src={tripod.icon} alt={tripod.name} style={{width: '24px', height: '24px', borderRadius: '4px'}} />
+                                            <div style={{display: 'flex', flexDirection: 'column'}}>
+                                                <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
+                                                    <span style={{
+                                                        fontSize: '10px',
+                                                        fontWeight: 'bold',
+                                                        color: '#fff',
+                                                        background: 'rgba(255, 255, 255, 0.2)',
+                                                        borderRadius: '50%',
+                                                        width: '14px',
+                                                        height: '14px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        paddingBottom: '1px'
+                                                    }}>{tripod.slot}</span>
+                                                    <span style={{fontSize: '12px', color: '#ddd'}}>{tripod.name}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
+
+    const tabs = ["전체", "스킬", "아크패시브", "아크 그리드", "원정대"]; // 🌟 "각인" -> "아크 그리드"로 수정
     const leftEquipOrder = ["투구", "어깨", "상의", "하의", "장갑", "무기"];
     const rightEquipTypes = ["목걸이", "귀걸이", "반지", "어빌리티 스톤", "팔찌"];
 
@@ -839,838 +1529,845 @@ export default function CharacterSearchPage() {
                         ))}
                     </div>
 
-                    <div style={{
-                        background: 'rgba(0,0,0,0.3)',
-                        padding: '20px',
-                        borderRadius: '8px',
-                        marginBottom: '20px',
-                        display: 'flex',
-                        justifyContent: 'space-around',
-                        alignItems: 'center'
-                    }}>
-                        <div style={{textAlign: 'center'}}>
-                            <div style={{fontSize: '14px', color: '#aaa', marginBottom: '5px'}}>아이템 레벨</div>
-                            <div style={{
-                                fontSize: '24px',
-                                fontWeight: 'bold',
-                                color: '#ffb74d'
-                            }}>{character.itemMaxLevel || character.itemAvgLevel}</div>
-                        </div>
-                        {character.combatPower && (
+                    {activeTab === '전체' && (
+                        <div style={{
+                            background: 'rgba(0,0,0,0.3)',
+                            padding: '20px',
+                            borderRadius: '8px',
+                            marginBottom: '20px',
+                            display: 'flex',
+                            justifyContent: 'space-around',
+                            alignItems: 'center'
+                        }}>
                             <div style={{textAlign: 'center'}}>
-                                <div style={{fontSize: '14px', color: '#aaa', marginBottom: '5px'}}>전투력</div>
+                                <div style={{fontSize: '14px', color: '#aaa', marginBottom: '5px'}}>아이템 레벨</div>
                                 <div style={{
                                     fontSize: '24px',
                                     fontWeight: 'bold',
-                                    color: '#ba94ff'
-                                }}>{character.combatPower}</div>
+                                    color: '#ffb74d'
+                                }}>{character.itemMaxLevel || character.itemAvgLevel}</div>
                             </div>
-                        )}
-                        <div style={{textAlign: 'center'}}>
-                            <div style={{fontSize: '14px', color: '#aaa', marginBottom: '5px'}}>전투 레벨</div>
-                            <div style={{
-                                fontSize: '24px',
-                                fontWeight: 'bold',
-                                color: '#fff'
-                            }}>{character.characterLevel}</div>
-                        </div>
-                        <div style={{textAlign: 'center'}}>
-                            <div style={{fontSize: '14px', color: '#aaa', marginBottom: '5px'}}>서버</div>
-                            <div style={{fontSize: '18px', color: '#fff'}}>{character.serverName}</div>
-                        </div>
-                        <div style={{textAlign: 'center'}}>
-                            <div style={{fontSize: '14px', color: '#aaa', marginBottom: '5px'}}>길드</div>
-                            <div style={{fontSize: '18px', color: '#fff'}}>{character.guildName || '-'}</div>
-                        </div>
-                    </div>
-
-                    <div style={{display: 'flex', gap: '20px', alignItems: 'flex-start'}}>
-                        <div style={{width: '390px', flexShrink: 0}}>
-                            <div style={{
-                                position: 'relative',
-                                height: '500px',
-                                background: 'url(' + character.characterImage + ') no-repeat center top / cover',
-                                borderRadius: '12px',
-                                overflow: 'hidden',
-                                marginBottom: '20px',
-                                border: '1px solid var(--border-color)'
-                            }}>
+                            {character.combatPower && (
+                                <div style={{textAlign: 'center'}}>
+                                    <div style={{fontSize: '14px', color: '#aaa', marginBottom: '5px'}}>전투력</div>
+                                    <div style={{
+                                        fontSize: '24px',
+                                        fontWeight: 'bold',
+                                        color: '#ba94ff'
+                                    }}>{character.combatPower}</div>
+                                </div>
+                            )}
+                            <div style={{textAlign: 'center'}}>
+                                <div style={{fontSize: '14px', color: '#aaa', marginBottom: '5px'}}>전투 레벨</div>
                                 <div style={{
-                                    position: 'absolute',
-                                    bottom: 0,
-                                    left: 0,
-                                    right: 0,
-                                    padding: '20px',
-                                    background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)'
+                                    fontSize: '24px',
+                                    fontWeight: 'bold',
+                                    color: '#fff'
+                                }}>{character.characterLevel}</div>
+                            </div>
+                            <div style={{textAlign: 'center'}}>
+                                <div style={{fontSize: '14px', color: '#aaa', marginBottom: '5px'}}>서버</div>
+                                <div style={{fontSize: '18px', color: '#fff'}}>{character.serverName}</div>
+                            </div>
+                            <div style={{textAlign: 'center'}}>
+                                <div style={{fontSize: '14px', color: '#aaa', marginBottom: '5px'}}>길드</div>
+                                <div style={{fontSize: '18px', color: '#fff'}}>{character.guildName || '-'}</div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === '전체' && (
+                        <div style={{display: 'flex', gap: '20px', alignItems: 'flex-start'}}>
+                            <div style={{width: '390px', flexShrink: 0}}>
+                                <div style={{
+                                    position: 'relative',
+                                    height: '500px',
+                                    background: 'url(' + character.characterImage + ') no-repeat center top / cover',
+                                    borderRadius: '12px',
+                                    overflow: 'hidden',
+                                    marginBottom: '20px',
+                                    border: '1px solid var(--border-color)'
                                 }}>
                                     <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '8px',
-                                        marginBottom: '4px'
+                                        position: 'absolute',
+                                        bottom: 0,
+                                        left: 0,
+                                        right: 0,
+                                        padding: '20px',
+                                        background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)'
                                     }}>
-                                        {character.titleIcon && <img src={character.titleIcon} alt="title icon"
-                                                                     style={{width: '24px', height: '24px'}}/>}
-                                        <div style={{color: '#aaa', fontSize: '14px'}}>{character.title}</div>
-                                    </div>
-                                    <h2 style={{
-                                        margin: 0,
-                                        fontSize: '28px',
-                                        color: '#fff'
-                                    }}>{character.characterName}</h2>
-                                    <div style={{
-                                        marginTop: '8px',
-                                        display: 'inline-block',
-                                        background: 'var(--primary-color)',
-                                        padding: '4px 10px',
-                                        borderRadius: '4px',
-                                        fontSize: '14px',
-                                        color: '#fff'
-                                    }}>{character.characterClassName}</div>
-                                </div>
-                            </div>
-
-                            <div style={{
-                                background: 'var(--bg-card)',
-                                padding: '20px',
-                                borderRadius: '12px',
-                                border: '1px solid var(--border-color)'
-                            }}>
-                                <h3 style={{
-                                    margin: '0 0 15px 0',
-                                    fontSize: '18px',
-                                    color: '#fff',
-                                    borderBottom: '1px solid rgba(255,255,255,0.1)',
-                                    paddingBottom: '10px'
-                                }}>기본 특성</h3>
-                                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px'}}>
-                                    {character.stats.map((stat, idx) => (
-                                        <div key={idx} style={{
+                                        <div style={{
                                             display: 'flex',
-                                            justifyContent: 'space-between',
-                                            fontSize: '14px'
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            marginBottom: '4px'
                                         }}>
-                                            <span style={{color: '#aaa'}}>{stat.type}</span>
-                                            <span style={{color: '#fff', fontWeight: 'bold'}}>{stat.value}</span>
+                                            {character.titleIcon && <img src={character.titleIcon} alt="title icon"
+                                                                         style={{width: '24px', height: '24px'}}/>}
+                                            <div style={{color: '#aaa', fontSize: '14px'}}>{character.title}</div>
                                         </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div style={{
-                                marginTop: '20px',
-                                background: 'var(--bg-card)',
-                                padding: '20px',
-                                borderRadius: '12px',
-                                border: '1px solid var(--border-color)'
-                            }}>
-                                <h3 style={{
-                                    margin: '0 0 15px 0',
-                                    fontSize: '18px',
-                                    color: '#fff',
-                                    borderBottom: '1px solid rgba(255,255,255,0.1)',
-                                    paddingBottom: '10px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between'
-                                }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span>아크패시브</span>
-                                        {character.arkPassive?.title && (
-                                            <span style={{ fontSize: '14px', color: '#ffb74d', fontWeight: 'bold' }}>
-                                                [{character.arkPassive.title}]
-                                            </span>
-                                        )}
+                                        <h2 style={{
+                                            margin: 0,
+                                            fontSize: '28px',
+                                            color: '#fff'
+                                        }}>{character.characterName}</h2>
+                                        <div style={{
+                                            marginTop: '8px',
+                                            display: 'inline-block',
+                                            background: 'var(--primary-color)',
+                                            padding: '4px 10px',
+                                            borderRadius: '4px',
+                                            fontSize: '14px',
+                                            color: '#fff'
+                                        }}>{character.characterClassName}</div>
                                     </div>
-                                    {character.arkPassive?.isArkPassive && <span style={{
-                                        fontSize: '12px',
-                                        background: '#ba94ff',
-                                        color: '#000',
-                                        padding: '2px 8px',
-                                        borderRadius: '4px',
-                                        fontWeight: 'bold'
-                                    }}>Active</span>}
-                                </h3>
-                                {character.arkPassive && character.arkPassive.points && character.arkPassive.points.length > 0 ? (
-                                    renderArkPassivePoints()
-                                ) : (
-                                    <div style={{
-                                        color: '#aaa',
-                                        fontSize: '14px',
-                                        textAlign: 'center',
-                                        padding: '10px 0'
-                                    }}>활성화된 아크패시브 포인트가 없습니다.</div>
-                                )}
-                            </div>
+                                </div>
 
-                            <div style={{
-                                marginTop: '20px',
-                                background: 'var(--bg-card)',
-                                padding: '20px',
-                                borderRadius: '12px',
-                                border: '1px solid var(--border-color)'
-                            }}>
-                                <h3 style={{
-                                    margin: '0 0 15px 0',
-                                    fontSize: '18px',
-                                    color: '#fff',
-                                    borderBottom: '1px solid rgba(255,255,255,0.1)',
-                                    paddingBottom: '10px'
+                                <div style={{
+                                    background: 'var(--bg-card)',
+                                    padding: '20px',
+                                    borderRadius: '12px',
+                                    border: '1px solid var(--border-color)'
                                 }}>
-                                    아크 그리드
-                                </h3>
-                                {character.arkGrids && character.arkGrids.length > 0 ? (
-                                    <div style={{display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '4px'}}>
-                                        {character.arkGrids.map((grid, idx) => (
+                                    <h3 style={{
+                                        margin: '0 0 15px 0',
+                                        fontSize: '18px',
+                                        color: '#fff',
+                                        borderBottom: '1px solid rgba(255,255,255,0.1)',
+                                        paddingBottom: '10px'
+                                    }}>기본 특성</h3>
+                                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px'}}>
+                                        {character.stats.map((stat, idx) => (
                                             <div key={idx} style={{
                                                 display: 'flex',
-                                                flexDirection: 'column',
-                                                gap: '4px',
-                                                background: 'rgba(255,255,255,0.03)',
-                                                padding: '8px 2px',
-                                                borderRadius: '8px',
-                                                alignItems: 'center',
-                                                height: '100%'
+                                                justifyContent: 'space-between',
+                                                fontSize: '14px'
                                             }}>
-                                                <div style={{
-                                                    width: '36px',
-                                                    height: '36px',
-                                                    borderRadius: '6px',
-                                                    overflow: 'hidden',
-                                                    border: 'none',
-                                                    flexShrink: 0
-                                                }}>
-                                                    <img src={grid.icon} alt={grid.effectName}
-                                                         style={{width: '100%', height: '100%', objectFit: 'cover'}}/>
-                                                </div>
-                                                <div style={{
-                                                    display: 'flex',
-                                                    flexDirection: 'column',
-                                                    alignItems: 'center',
-                                                    gap: '3px',
-                                                    width: '100%',
-                                                    flex: 1
-                                                }}>
-                                                    <div style={{
-                                                        fontSize: '11px',
-                                                        fontWeight: 'bold',
-                                                        color: '#f97316',
-                                                        textAlign: 'center',
-                                                        lineHeight: '1.2',
-                                                        width: '100%',
-                                                        wordBreak: 'keep-all',
-                                                        display: '-webkit-box',
-                                                        WebkitLineClamp: 2,
-                                                        WebkitBoxOrient: 'vertical',
-                                                        overflow: 'hidden',
-                                                        flex: 1
-                                                    }}>
-                                                        {grid.effectName}
-                                                    </div>
-                                                    <div style={{
-                                                        fontSize: '10px',
-                                                        fontWeight: 'bold',
-                                                        color: '#fff',
-                                                        background: 'rgba(0,0,0,0.5)',
-                                                        padding: '2px 6px',
-                                                        borderRadius: '8px',
-                                                        marginTop: 'auto'
-                                                    }}>
-                                                        {grid.point}P
-                                                    </div>
-                                                </div>
+                                                <span style={{color: '#aaa'}}>{stat.type}</span>
+                                                <span style={{color: '#fff', fontWeight: 'bold'}}>{stat.value}</span>
                                             </div>
                                         ))}
                                     </div>
-                                ) : (
-                                    <div style={{
-                                        color: '#aaa',
-                                        fontSize: '14px',
-                                        textAlign: 'center',
-                                        padding: '10px 0'
-                                    }}>
-                                        장착된 아크 그리드가 없습니다.
-                                    </div>
-                                )}
-                            </div>
-
-                            <div style={{
-                                marginTop: '20px',
-                                background: 'var(--bg-card)',
-                                padding: '16px',
-                                borderRadius: '12px',
-                                border: '1px solid var(--border-color)'
-                            }}>
-                                <div style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    marginBottom: '12px',
-                                    borderBottom: '1px solid rgba(255,255,255,0.05)',
-                                    paddingBottom: '12px'
-                                }}>
-                                    <h3 style={{margin: 0, fontSize: '16px', color: '#fff', fontWeight: 'bold'}}>각인</h3>
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '12px',
-                                        fontSize: '12px',
-                                        color: '#aaa'
-                                    }}>
-                                        <span>총 {activeEngravings.length}개</span>
-                                    </div>
                                 </div>
 
-                                {activeEngravings.length > 0 ? (
-                                    <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
-                                        {activeEngravings.map((effect, idx) => {
-                                            let bgPos = '-116px';
-                                            if (effect.grade === '전설') bgPos = '-58px';
-                                            else if (effect.grade === '영웅') bgPos = '-174px';
-                                            else if (effect.grade === '희귀') bgPos = '-232px';
-                                            else if (effect.grade === '고급') bgPos = '0px';
+                                <div style={{
+                                    marginTop: '20px',
+                                    background: 'var(--bg-card)',
+                                    padding: '20px',
+                                    borderRadius: '12px',
+                                    border: '1px solid var(--border-color)'
+                                }}>
+                                    <h3 style={{
+                                        margin: '0 0 15px 0',
+                                        fontSize: '18px',
+                                        color: '#fff',
+                                        borderBottom: '1px solid rgba(255,255,255,0.1)',
+                                        paddingBottom: '10px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <span>아크패시브</span>
+                                            {character.arkPassive?.title && (
+                                                <span style={{ fontSize: '14px', color: '#ffb74d', fontWeight: 'bold' }}>
+                                                    [{character.arkPassive.title}]
+                                                </span>
+                                            )}
+                                        </div>
+                                        {character.arkPassive?.isArkPassive && <span style={{
+                                            fontSize: '12px',
+                                            background: '#ba94ff',
+                                            color: '#000',
+                                            padding: '2px 8px',
+                                            borderRadius: '4px',
+                                            fontWeight: 'bold'
+                                        }}>Active</span>}
+                                    </h3>
+                                    {character.arkPassive && character.arkPassive.points && character.arkPassive.points.length > 0 ? (
+                                        renderArkPassivePoints()
+                                    ) : (
+                                        <div style={{
+                                            color: '#aaa',
+                                            fontSize: '14px',
+                                            textAlign: 'center',
+                                            padding: '10px 0'
+                                        }}>활성화된 아크패시브 포인트가 없습니다.</div>
+                                    )}
+                                </div>
 
-                                            const matchedStoneEng = globalStoneEngravings.find(se => se.name === effect.name);
-
-                                            return (
+                                <div style={{
+                                    marginTop: '20px',
+                                    background: 'var(--bg-card)',
+                                    padding: '20px',
+                                    borderRadius: '12px',
+                                    border: '1px solid var(--border-color)'
+                                }}>
+                                    <h3 style={{
+                                        margin: '0 0 15px 0',
+                                        fontSize: '18px',
+                                        color: '#fff',
+                                        borderBottom: '1px solid rgba(255,255,255,0.1)',
+                                        paddingBottom: '10px'
+                                    }}>
+                                        아크 그리드
+                                    </h3>
+                                    {character.arkGrids && character.arkGrids.length > 0 ? (
+                                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '4px'}}>
+                                            {character.arkGrids.map((grid, idx) => (
                                                 <div key={idx} style={{
                                                     display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '6px',
+                                                    flexDirection: 'column',
+                                                    gap: '4px',
                                                     background: 'rgba(255,255,255,0.03)',
-                                                    padding: '6px 12px',
-                                                    borderRadius: '9999px',
-                                                    transition: 'all 0.2s ease',
-                                                    cursor: 'pointer'
-                                                }}
-                                                     onMouseEnter={(e) => {
-                                                         e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                                                         e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.2)';
-                                                     }}
-                                                     onMouseLeave={(e) => {
-                                                         e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                                                         e.currentTarget.style.boxShadow = 'none';
-                                                     }}
-                                                     title={effect.description.replace(/<[^>]*>?/gm, '')}
-                                                >
-                                                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                                                        <i style={{
-                                                            display: 'inline-block',
-                                                            width: '24px',
-                                                            height: '24px',
-                                                            transform: 'scale(0.75)',
-                                                            transformOrigin: 'center',
-                                                            background: `url("https://pica.korlark.com/2018/obt/assets/images/pc/profile/img_engrave_icon.png") ${bgPos} center`,
-                                                        }}/>
-                                                        <span style={{
-                                                            fontSize: '14px',
-                                                            fontWeight: 'bold',
-                                                            color: '#fff'
-                                                        }}>{effect.name}</span>
-                                                        <span style={{
-                                                            fontSize: '14px',
-                                                            fontWeight: 'bold',
-                                                            color: getGradeColor(effect.grade)
-                                                        }}>
-                                                            +{effect.level}
-                                                        </span>
+                                                    padding: '8px 2px',
+                                                    borderRadius: '8px',
+                                                    alignItems: 'center',
+                                                    height: '100%'
+                                                }}>
+                                                    <div style={{
+                                                        width: '36px',
+                                                        height: '36px',
+                                                        borderRadius: '6px',
+                                                        overflow: 'hidden',
+                                                        border: 'none',
+                                                        flexShrink: 0
+                                                    }}>
+                                                        <img src={grid.icon} alt={grid.effectName}
+                                                             style={{width: '100%', height: '100%', objectFit: 'cover'}}/>
                                                     </div>
-
-                                                    {matchedStoneEng && matchedStoneEng.level > 0 && !matchedStoneEng.isPenalty && (
+                                                    <div style={{
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        alignItems: 'center',
+                                                        gap: '3px',
+                                                        width: '100%',
+                                                        flex: 1
+                                                    }}>
                                                         <div style={{
-                                                            marginLeft: 'auto',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '2px',
-                                                            fontWeight: 'bold'
+                                                            fontSize: '11px',
+                                                            fontWeight: 'bold',
+                                                            color: '#f97316',
+                                                            textAlign: 'center',
+                                                            lineHeight: '1.2',
+                                                            width: '100%',
+                                                            wordBreak: 'keep-all',
+                                                            display: '-webkit-box',
+                                                            WebkitLineClamp: 2,
+                                                            WebkitBoxOrient: 'vertical',
+                                                            overflow: 'hidden',
+                                                            flex: 1
                                                         }}>
+                                                            {grid.effectName}
+                                                        </div>
+                                                        <div style={{
+                                                            fontSize: '10px',
+                                                            fontWeight: 'bold',
+                                                            color: '#fff',
+                                                            background: 'rgba(0,0,0,0.5)',
+                                                            padding: '2px 6px',
+                                                            borderRadius: '8px',
+                                                            marginTop: 'auto'
+                                                        }}>
+                                                            {grid.point}P
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div style={{
+                                            color: '#aaa',
+                                            fontSize: '14px',
+                                            textAlign: 'center',
+                                            padding: '10px 0'
+                                        }}>
+                                            장착된 아크 그리드가 없습니다.
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div style={{
+                                    marginTop: '20px',
+                                    background: 'var(--bg-card)',
+                                    padding: '16px',
+                                    borderRadius: '12px',
+                                    border: '1px solid var(--border-color)'
+                                }}>
+                                    <div style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        marginBottom: '12px',
+                                        borderBottom: '1px solid rgba(255,255,255,0.05)',
+                                        paddingBottom: '12px'
+                                    }}>
+                                        <h3 style={{margin: 0, fontSize: '16px', color: '#fff', fontWeight: 'bold'}}>각인</h3>
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '12px',
+                                            fontSize: '12px',
+                                            color: '#aaa'
+                                        }}>
+                                            <span>총 {activeEngravings.length}개</span>
+                                        </div>
+                                    </div>
+
+                                    {activeEngravings.length > 0 ? (
+                                        <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
+                                            {activeEngravings.map((effect, idx) => {
+                                                let bgPos = '-116px';
+                                                if (effect.grade === '전설') bgPos = '-58px';
+                                                else if (effect.grade === '영웅') bgPos = '-174px';
+                                                else if (effect.grade === '희귀') bgPos = '-232px';
+                                                else if (effect.grade === '고급') bgPos = '0px';
+
+                                                const matchedStoneEng = globalStoneEngravings.find(se => se.name === effect.name);
+
+                                                return (
+                                                    <div key={idx} style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '6px',
+                                                        background: 'rgba(255,255,255,0.03)',
+                                                        padding: '6px 12px',
+                                                        borderRadius: '9999px',
+                                                        transition: 'all 0.2s ease',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                         onMouseEnter={(e) => {
+                                                             e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                                                             e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.2)';
+                                                         }}
+                                                         onMouseLeave={(e) => {
+                                                             e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                                                             e.currentTarget.style.boxShadow = 'none';
+                                                         }}
+                                                         title={effect.description.replace(/<[^>]*>?/gm, '')}
+                                                    >
+                                                        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                                                             <i style={{
                                                                 display: 'inline-block',
                                                                 width: '24px',
                                                                 height: '24px',
                                                                 transform: 'scale(0.75)',
                                                                 transformOrigin: 'center',
-                                                                background: `url("https://pica.korlark.com/2018/obt/assets/images/pc/profile/img_engrave_icon.png") 0px center`,
+                                                                background: `url("https://pica.korlark.com/2018/obt/assets/images/pc/profile/img_engrave_icon.png") ${bgPos} center`,
                                                             }}/>
                                                             <span style={{
                                                                 fontSize: '14px',
+                                                                fontWeight: 'bold',
                                                                 color: '#fff'
-                                                            }}>+{matchedStoneEng.level}</span>
+                                                            }}>{effect.name}</span>
+                                                            <span style={{
+                                                                fontSize: '14px',
+                                                                fontWeight: 'bold',
+                                                                color: getGradeColor(effect.grade)
+                                                            }}>
+                                                                +{effect.level}
+                                                            </span>
                                                         </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                ) : (
-                                    <div style={{
-                                        color: '#aaa',
-                                        fontSize: '14px',
-                                        textAlign: 'center',
-                                        padding: '10px 0'
-                                    }}>
-                                        장착된 각인이 없습니다.
-                                    </div>
-                                )}
-                            </div>
-                        </div>
 
-                        <div style={{flex: 1, display: 'flex', flexDirection: 'column', gap: '20px'}}>
-                            <div style={{display: 'flex', gap: '20px'}}>
-                                <div style={{
-                                    flex: 1,
-                                    background: 'var(--bg-card)',
-                                    padding: '20px',
-                                    borderRadius: '12px',
-                                    border: '1px solid var(--border-color)'
-                                }}>
-                                    <h3 style={{
-                                        margin: '0 0 15px 0',
-                                        fontSize: '18px',
-                                        color: '#fff',
-                                        borderBottom: '1px solid rgba(255,255,255,0.1)',
-                                        paddingBottom: '10px'
-                                    }}>장비</h3>
-                                    <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
-                                        {leftEquipments.map((eq, index) => {
-                                            const {quality} = parseTooltip(eq.tooltip);
-                                            const qualityInfo = getQualityGrade(quality);
-                                            return (
-                                                <div key={index} style={{
-                                                    display: 'flex',
-                                                    alignItems: 'flex-start',
-                                                    gap: '10px',
-                                                    background: 'rgba(255,255,255,0.03)',
-                                                    padding: '8px',
-                                                    borderRadius: '6px'
-                                                }}>
-                                                    <div style={{
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        alignItems: 'center',
-                                                        width: '40px',
-                                                        flexShrink: 0
-                                                    }}>
-                                                        <div style={{
-                                                            width: '40px',
-                                                            height: '40px',
-                                                            borderRadius: '4px',
-                                                            overflow: 'hidden',
-                                                            background: '#000',
-                                                            border: `1px solid ${getGradeColor(eq.grade)}`,
-                                                            marginBottom: '4px'
-                                                        }}>
-                                                            <img src={eq.icon} alt={eq.name} style={{
-                                                                width: '100%',
-                                                                height: '100%',
-                                                                objectFit: 'cover'
-                                                            }}/>
-                                                        </div>
-                                                        {quality >= 0 && <div style={{
-                                                            fontSize: '11px',
-                                                            fontWeight: 'bold',
-                                                            color: qualityInfo.color,
-                                                            textAlign: 'center',
-                                                            whiteSpace: 'nowrap'
-                                                        }}>품질 {quality}</div>}
-                                                    </div>
-                                                    <div style={{
-                                                        flex: 1,
-                                                        overflow: 'hidden',
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        justifyContent: 'center',
-                                                        minHeight: '40px'
-                                                    }}>
-                                                        <div style={{fontSize: '11px', color: '#aaa'}}>{eq.type}</div>
-                                                        <div style={{
-                                                            fontSize: '13px',
-                                                            fontWeight: 'bold',
-                                                            color: getGradeColor(eq.grade),
-                                                            whiteSpace: 'nowrap',
-                                                            overflow: 'hidden',
-                                                            textOverflow: 'ellipsis'
-                                                        }}>{eq.name}</div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-
-                                    <h3 style={{
-                                        margin: '20px 0 15px 0',
-                                        fontSize: '18px',
-                                        color: '#fff',
-                                        borderBottom: '1px solid rgba(255,255,255,0.1)',
-                                        paddingBottom: '10px'
-                                    }}>스킬</h3>
-                                    <div style={{display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px'}}>
-                                        {character.skills
-                                            .filter(skill => skill.level >= 2 || skill.runeName || skill.isAwakening)
-                                            .sort((a, b) => b.level - a.level)
-                                            .map((skill, index) => (
-                                                <div key={index} style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '8px',
-                                                    background: 'rgba(255,255,255,0.03)',
-                                                    padding: '6px',
-                                                    borderRadius: '6px'
-                                                }}>
-                                                    <div style={{
-                                                        position: 'relative',
-                                                        width: '32px',
-                                                        height: '32px',
-                                                        borderRadius: '4px',
-                                                        overflow: 'hidden',
-                                                        flexShrink: 0
-                                                    }}>
-                                                        <img src={skill.icon} alt={skill.name} style={{
-                                                            width: '100%',
-                                                            height: '100%',
-                                                            objectFit: 'cover'
-                                                        }}/>
-                                                        <div style={{
-                                                            position: 'absolute',
-                                                            bottom: 0,
-                                                            right: 0,
-                                                            background: 'rgba(0,0,0,0.8)',
-                                                            color: '#fff',
-                                                            fontSize: '9px',
-                                                            padding: '0 2px',
-                                                            borderRadius: '2px'
-                                                        }}>{skill.level}</div>
-                                                    </div>
-                                                    <div style={{overflow: 'hidden'}}>
-                                                        <div style={{
-                                                            fontSize: '12px',
-                                                            fontWeight: 'bold',
-                                                            color: '#ddd',
-                                                            whiteSpace: 'nowrap',
-                                                            overflow: 'hidden',
-                                                            textOverflow: 'ellipsis'
-                                                        }}>{skill.name}</div>
-                                                        {skill.runeName && (
+                                                        {matchedStoneEng && matchedStoneEng.level > 0 && !matchedStoneEng.isPenalty && (
                                                             <div style={{
-                                                                fontSize: '11px',
-                                                                color: getRuneColor(skill.runeGrade),
+                                                                marginLeft: 'auto',
                                                                 display: 'flex',
                                                                 alignItems: 'center',
-                                                                gap: '3px'
+                                                                gap: '2px',
+                                                                fontWeight: 'bold'
                                                             }}>
-                                                                <img src={skill.runeIcon} alt="" style={{
-                                                                    width: '12px',
-                                                                    height: '12px'
-                                                                }}/>{skill.runeName}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                    </div>
-                                </div>
-
-                                <div style={{
-                                    flex: 1.2,
-                                    background: 'var(--bg-card)',
-                                    padding: '20px',
-                                    borderRadius: '12px',
-                                    border: '1px solid var(--border-color)'
-                                }}>
-                                    <h3 style={{
-                                        margin: '0 0 15px 0',
-                                        fontSize: '18px',
-                                        color: '#fff',
-                                        borderBottom: '1px solid rgba(255,255,255,0.1)',
-                                        paddingBottom: '10px'
-                                    }}>악세서리 & 특수장비</h3>
-                                    <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
-                                        {rightEquipments.map((eq, index) => {
-                                            const {
-                                                quality,
-                                                options,
-                                                mainStat,
-                                                abilityEngravings
-                                            } = parseTooltip(eq.tooltip);
-                                            const qualityInfo = getQualityGrade(quality);
-
-                                            return (
-                                                <div key={index} style={{
-                                                    display: 'flex',
-                                                    alignItems: 'flex-start',
-                                                    gap: '10px',
-                                                    background: 'rgba(255,255,255,0.03)',
-                                                    padding: '10px',
-                                                    borderRadius: '6px'
-                                                }}>
-                                                    <div style={{
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        alignItems: 'center',
-                                                        width: '40px',
-                                                        flexShrink: 0
-                                                    }}>
-                                                        <div style={{
-                                                            width: '40px',
-                                                            height: '40px',
-                                                            borderRadius: '4px',
-                                                            overflow: 'hidden',
-                                                            background: '#000',
-                                                            border: `1px solid ${getGradeColor(eq.grade)}`,
-                                                            marginBottom: '4px'
-                                                        }}>
-                                                            <img src={eq.icon} alt={eq.name} style={{
-                                                                width: '100%',
-                                                                height: '100%',
-                                                                objectFit: 'cover'
-                                                            }}/>
-                                                        </div>
-                                                        {quality >= 0 && <div style={{
-                                                            fontSize: '11px',
-                                                            fontWeight: 'bold',
-                                                            color: qualityInfo.color,
-                                                            textAlign: 'center',
-                                                            whiteSpace: 'nowrap'
-                                                        }}>품질 {quality}</div>}
-                                                        {mainStat && <div style={{
-                                                            fontSize: '10px',
-                                                            color: '#aaa',
-                                                            marginTop: '2px',
-                                                            textAlign: 'center',
-                                                            whiteSpace: 'nowrap'
-                                                        }}>{mainStat}</div>}
-                                                    </div>
-                                                    <div style={{flex: 1, overflow: 'hidden'}}>
-                                                        <div style={{
-                                                            fontSize: '13px',
-                                                            fontWeight: 'bold',
-                                                            color: getGradeColor(eq.grade),
-                                                            marginBottom: '4px'
-                                                        }}>{eq.name}</div>
-                                                        <div style={{
-                                                            fontSize: '12px',
-                                                            color: '#ddd',
-                                                            lineHeight: '1.4'
-                                                        }}>
-
-                                                            {eq.type === "어빌리티 스톤" && abilityEngravings.length > 0 ? (
-                                                                <div style={{
-                                                                    display: 'flex',
-                                                                    flexDirection: 'column',
-                                                                    gap: '3px',
-                                                                    marginTop: '4px'
-                                                                }}>
-                                                                    {abilityEngravings.map((eng, i) => (
-                                                                        <div key={i} style={{
-                                                                            display: 'flex',
-                                                                            alignItems: 'center',
-                                                                            gap: '6px'
-                                                                        }}>
-                                                                            <span style={{
-                                                                                color: eng.isPenalty ? '#ef5350' : '#81c784',
-                                                                                fontWeight: 'bold'
-                                                                            }}>[{eng.name}]</span>
-                                                                            <span style={{
-                                                                                color: '#fff',
-                                                                                fontWeight: 'bold'
-                                                                            }}>Lv.{eng.level}</span>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            ) : options.length > 0 ? (
-                                                                <div style={{
-                                                                    display: 'flex',
-                                                                    flexDirection: 'column',
-                                                                    gap: '2px'
-                                                                }}>
-                                                                    {options.map((opt, i) => <div
-                                                                        key={i}>{renderOption(opt, eq.type)}</div>)}
-                                                                </div>
-                                                            ) : <span style={{color: '#666'}}>옵션 정보 없음</span>}
-
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div style={{
-                                background: 'var(--bg-card)',
-                                padding: '20px',
-                                borderRadius: '12px',
-                                border: '1px solid var(--border-color)'
-                            }}>
-                                <h3 style={{
-                                    margin: '0 0 15px 0',
-                                    fontSize: '18px',
-                                    color: '#fff',
-                                    borderBottom: '1px solid rgba(255,255,255,0.1)',
-                                    paddingBottom: '10px',
-                                    display: 'flex',
-                                    alignItems: 'baseline',
-                                    gap: '8px'
-                                }}>
-                                    보석
-                                    <span style={{
-                                        fontSize: '13px',
-                                        color: '#aaa',
-                                        fontWeight: 'normal'
-                                    }}>{getGemSummary()}</span>
-                                </h3>
-                                {character.gems.length > 0 ? (
-                                    <div style={{display: 'grid', gridTemplateColumns: 'repeat(11, 1fr)', gap: '5px'}}>
-                                        {character.gems
-                                            .sort((a, b) => {
-                                                const isDmgA = isDamageGem(a);
-                                                const isDmgB = isDamageGem(b);
-                                                if (isDmgA && !isDmgB) return -1;
-                                                if (!isDmgA && isDmgB) return 1;
-                                                if (b.level !== a.level) return b.level - a.level;
-                                                return a.name.localeCompare(b.name);
-                                            })
-                                            .map((gem, index) => {
-                                                const isDmg = isDamageGem(gem);
-                                                const bgColor = isDmg ? 'rgba(255, 87, 34, 0.15)' : 'rgba(33, 150, 243, 0.15)';
-
-                                                let skillIcon = gem.skillIcon;
-                                                if (!skillIcon) {
-                                                    skillIcon = findSkillIconFallback(gem.tooltip, character.skills) || undefined;
-                                                }
-
-                                                return (
-                                                    <div key={index} style={{
-                                                        position: 'relative',
-                                                        width: '100%',
-                                                        aspectRatio: '1/1',
-                                                        borderRadius: '6px',
-                                                        overflow: 'hidden',
-                                                        background: bgColor,
-                                                        border: `1px solid ${getGradeColor(gem.grade)}`,
-                                                        padding: '2px'
-                                                    }} title={gem.name}>
-                                                        <img src={gem.icon} alt={gem.name} style={{
-                                                            width: '100%',
-                                                            height: '100%',
-                                                            objectFit: 'cover',
-                                                            borderRadius: '4px'
-                                                        }}/>
-                                                        <div style={{
-                                                            position: 'absolute',
-                                                            bottom: 0,
-                                                            right: 0,
-                                                            background: 'rgba(0,0,0,0.7)',
-                                                            color: '#fff',
-                                                            fontSize: '11px',
-                                                            padding: '1px 4px',
-                                                            borderRadius: '4px 0 0 0'
-                                                        }}>{gem.level}</div>
-                                                        {skillIcon && (
-                                                            <div style={{
-                                                                position: 'absolute',
-                                                                bottom: '2px',
-                                                                left: '2px',
-                                                                width: '18px',
-                                                                height: '18px',
-                                                                borderRadius: '3px',
-                                                                overflow: 'hidden',
-                                                                border: '1px solid rgba(0,0,0,0.6)',
-                                                                zIndex: 2
-                                                            }}>
-                                                                <img src={skillIcon} alt="skill" style={{
-                                                                    width: '100%',
-                                                                    height: '100%',
-                                                                    objectFit: 'cover'
+                                                                <i style={{
+                                                                    display: 'inline-block',
+                                                                    width: '24px',
+                                                                    height: '24px',
+                                                                    transform: 'scale(0.75)',
+                                                                    transformOrigin: 'center',
+                                                                    background: `url("https://pica.korlark.com/2018/obt/assets/images/pc/profile/img_engrave_icon.png") 0px center`,
                                                                 }}/>
+                                                                <span style={{
+                                                                    fontSize: '14px',
+                                                                    color: '#fff'
+                                                                }}>+{matchedStoneEng.level}</span>
                                                             </div>
                                                         )}
                                                     </div>
                                                 );
                                             })}
-                                    </div>
-                                ) : (
-                                    <div style={{color: '#aaa', fontSize: '14px'}}>장착된 보석이 없습니다.</div>
-                                )}
-                            </div>
-
-                            {/* 🌟 카드 영역을 다시 보석 아래쪽으로 원상복구했습니다 */}
-                            <div style={{
-                                background: 'var(--bg-card)',
-                                padding: '20px',
-                                borderRadius: '12px',
-                                border: '1px solid var(--border-color)'
-                            }}>
-                                <h3 style={{
-                                    margin: '0 0 15px 0',
-                                    fontSize: '18px',
-                                    color: '#fff',
-                                    borderBottom: '1px solid rgba(255,255,255,0.1)',
-                                    paddingBottom: '10px'
-                                }}>카드</h3>
-
-                                <div style={{ display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
-                                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                        {character.cards.map((card, index) => (
-                                            <div key={index} style={{ width: '80px', flexShrink: 0, textAlign: 'center' }}>
-                                                <div style={{ width: '80px', height: '110px', borderRadius: '6px', overflow: 'hidden', border: `1px solid ${getGradeColor(card.grade)}` }}>
-                                                    <img src={card.icon} alt={card.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    <div style={{
-                                        flex: 1,
-                                        minWidth: '250px',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        justifyContent: 'center',
-                                        borderLeft: '1px solid rgba(255,255,255,0.1)',
-                                        paddingLeft: '24px'
-                                    }}>
-                                        {(() => {
-                                            const { stats, specials } = getAggregatedCardEffects();
-
-                                            if (stats.length === 0 && specials.length === 0) {
-                                                return character.cardEffects.map((effect, idx) => {
-                                                    const lastItem = effect.items[effect.items.length - 1];
-                                                    return lastItem ? (
-                                                        <div key={idx} style={{ fontSize: '15px', color: '#81c784', fontWeight: 'bold', marginBottom: '4px' }}>
-                                                            {lastItem.name}
-                                                        </div>
-                                                    ) : null;
-                                                });
-                                            }
-
-                                            return (
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                                    <div style={{ fontSize: '15px', color: '#81c784', fontWeight: 'bold' }}>
-                                                        {character.cardEffects.map(e => e.items[e.items.length - 1]?.name).filter(Boolean).join(' / ')}
-                                                    </div>
-
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                        {stats.map((stat, idx) => (
-                                                            <div key={`stat-${idx}`} style={{ fontSize: '14px', color: '#ddd' }}>
-                                                                • {stat}
-                                                            </div>
-                                                        ))}
-                                                        {specials.map((sp, idx) => (
-                                                            <div key={`sp-${idx}`} style={{ fontSize: '14px', color: '#ddd' }}>
-                                                                • {sp}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })()}
-                                    </div>
+                                        </div>
+                                    ) : (
+                                        <div style={{
+                                            color: '#aaa',
+                                            fontSize: '14px',
+                                            textAlign: 'center',
+                                            padding: '10px 0'
+                                        }}>
+                                            장착된 각인이 없습니다.
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
+                            <div style={{flex: 1, display: 'flex', flexDirection: 'column', gap: '20px'}}>
+                                <div style={{display: 'flex', gap: '20px'}}>
+                                    <div style={{
+                                        flex: 1,
+                                        background: 'var(--bg-card)',
+                                        padding: '20px',
+                                        borderRadius: '12px',
+                                        border: '1px solid var(--border-color)'
+                                    }}>
+                                        <h3 style={{
+                                            margin: '0 0 15px 0',
+                                            fontSize: '18px',
+                                            color: '#fff',
+                                            borderBottom: '1px solid rgba(255,255,255,0.1)',
+                                            paddingBottom: '10px'
+                                        }}>장비</h3>
+                                        <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+                                            {leftEquipments.map((eq, index) => {
+                                                const {quality} = parseTooltip(eq.tooltip);
+                                                const qualityInfo = getQualityGrade(quality);
+                                                return (
+                                                    <div key={index} style={{
+                                                        display: 'flex',
+                                                        alignItems: 'flex-start',
+                                                        gap: '10px',
+                                                        background: 'rgba(255,255,255,0.03)',
+                                                        padding: '8px',
+                                                        borderRadius: '6px'
+                                                    }}>
+                                                        <div style={{
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            alignItems: 'center',
+                                                            width: '40px',
+                                                            flexShrink: 0
+                                                        }}>
+                                                            <div style={{
+                                                                width: '40px',
+                                                                height: '40px',
+                                                                borderRadius: '4px',
+                                                                overflow: 'hidden',
+                                                                background: '#000',
+                                                                border: `1px solid ${getGradeColor(eq.grade)}`,
+                                                                marginBottom: '4px'
+                                                            }}>
+                                                                <img src={eq.icon} alt={eq.name} style={{
+                                                                    width: '100%',
+                                                                    height: '100%',
+                                                                    objectFit: 'cover'
+                                                                }}/>
+                                                            </div>
+                                                            {quality >= 0 && <div style={{
+                                                                fontSize: '11px',
+                                                                fontWeight: 'bold',
+                                                                color: qualityInfo.color,
+                                                                textAlign: 'center',
+                                                                whiteSpace: 'nowrap'
+                                                            }}>품질 {quality}</div>}
+                                                        </div>
+                                                        <div style={{
+                                                            flex: 1,
+                                                            overflow: 'hidden',
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            justifyContent: 'center',
+                                                            minHeight: '40px'
+                                                        }}>
+                                                            <div style={{fontSize: '11px', color: '#aaa'}}>{eq.type}</div>
+                                                            <div style={{
+                                                                fontSize: '13px',
+                                                                fontWeight: 'bold',
+                                                                color: getGradeColor(eq.grade),
+                                                                whiteSpace: 'nowrap',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis'
+                                                            }}>{eq.name}</div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        <h3 style={{
+                                            margin: '20px 0 15px 0',
+                                            fontSize: '18px',
+                                            color: '#fff',
+                                            borderBottom: '1px solid rgba(255,255,255,0.1)',
+                                            paddingBottom: '10px'
+                                        }}>스킬</h3>
+                                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px'}}>
+                                            {character.skills
+                                                .filter(skill => skill.level >= 2 || skill.runeName || skill.isAwakening)
+                                                // .sort((a, b) => b.level - a.level) // 🌟 정렬 제거
+                                                .map((skill, index) => (
+                                                    <div key={index} style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '8px',
+                                                        background: 'rgba(255,255,255,0.03)',
+                                                        padding: '6px',
+                                                        borderRadius: '6px'
+                                                    }}>
+                                                        <div style={{
+                                                            position: 'relative',
+                                                            width: '32px',
+                                                            height: '32px',
+                                                            borderRadius: '4px',
+                                                            overflow: 'hidden',
+                                                            flexShrink: 0
+                                                        }}>
+                                                            <img src={skill.icon} alt={skill.name} style={{
+                                                                width: '100%',
+                                                                height: '100%',
+                                                                objectFit: 'cover'
+                                                            }}/>
+                                                            <div style={{
+                                                                position: 'absolute',
+                                                                bottom: 0,
+                                                                right: 0,
+                                                                background: 'rgba(0,0,0,0.8)',
+                                                                color: '#fff',
+                                                                fontSize: '9px',
+                                                                padding: '0 2px',
+                                                                borderRadius: '2px'
+                                                            }}>{skill.level}</div>
+                                                        </div>
+                                                        <div style={{overflow: 'hidden'}}>
+                                                            <div style={{
+                                                                fontSize: '12px',
+                                                                fontWeight: 'bold',
+                                                                color: '#ddd',
+                                                                whiteSpace: 'nowrap',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis'
+                                                            }}>{skill.name}</div>
+                                                            {skill.runeName && (
+                                                                <div style={{
+                                                                    fontSize: '11px',
+                                                                    color: getRuneColor(skill.runeGrade),
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '3px'
+                                                                }}>
+                                                                    <img src={skill.runeIcon} alt="" style={{
+                                                                        width: '12px',
+                                                                        height: '12px'
+                                                                    }}/>{skill.runeName}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                        </div>
+                                    </div>
+
+                                    <div style={{
+                                        flex: 1.2,
+                                        background: 'var(--bg-card)',
+                                        padding: '20px',
+                                        borderRadius: '12px',
+                                        border: '1px solid var(--border-color)'
+                                    }}>
+                                        <h3 style={{
+                                            margin: '0 0 15px 0',
+                                            fontSize: '18px',
+                                            color: '#fff',
+                                            borderBottom: '1px solid rgba(255,255,255,0.1)',
+                                            paddingBottom: '10px'
+                                        }}>악세서리 & 특수장비</h3>
+                                        <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+                                            {rightEquipments.map((eq, index) => {
+                                                const {
+                                                    quality,
+                                                    options,
+                                                    mainStat,
+                                                    abilityEngravings
+                                                } = parseTooltip(eq.tooltip);
+                                                const qualityInfo = getQualityGrade(quality);
+
+                                                return (
+                                                    <div key={index} style={{
+                                                        display: 'flex',
+                                                        alignItems: 'flex-start',
+                                                        gap: '10px',
+                                                        background: 'rgba(255,255,255,0.03)',
+                                                        padding: '10px',
+                                                        borderRadius: '6px'
+                                                    }}>
+                                                        <div style={{
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            alignItems: 'center',
+                                                            width: '40px',
+                                                            flexShrink: 0
+                                                        }}>
+                                                            <div style={{
+                                                                width: '40px',
+                                                                height: '40px',
+                                                                borderRadius: '4px',
+                                                                overflow: 'hidden',
+                                                                background: '#000',
+                                                                border: `1px solid ${getGradeColor(eq.grade)}`,
+                                                                marginBottom: '4px'
+                                                            }}>
+                                                                <img src={eq.icon} alt={eq.name} style={{
+                                                                    width: '100%',
+                                                                    height: '100%',
+                                                                    objectFit: 'cover'
+                                                                }}/>
+                                                            </div>
+                                                            {quality >= 0 && <div style={{
+                                                                fontSize: '11px',
+                                                                fontWeight: 'bold',
+                                                                color: qualityInfo.color,
+                                                                textAlign: 'center',
+                                                                whiteSpace: 'nowrap'
+                                                            }}>품질 {quality}</div>}
+                                                            {mainStat && <div style={{
+                                                                fontSize: '10px',
+                                                                color: '#aaa',
+                                                                marginTop: '2px',
+                                                                textAlign: 'center',
+                                                                whiteSpace: 'nowrap'
+                                                            }}>{mainStat}</div>}
+                                                        </div>
+                                                        <div style={{flex: 1, overflow: 'hidden'}}>
+                                                            <div style={{
+                                                                fontSize: '13px',
+                                                                fontWeight: 'bold',
+                                                                color: getGradeColor(eq.grade),
+                                                                marginBottom: '4px'
+                                                            }}>{eq.name}</div>
+                                                            <div style={{
+                                                                fontSize: '12px',
+                                                                color: '#ddd',
+                                                                lineHeight: '1.4'
+                                                            }}>
+
+                                                                {eq.type === "어빌리티 스톤" && abilityEngravings.length > 0 ? (
+                                                                    <div style={{
+                                                                        display: 'flex',
+                                                                        flexDirection: 'column',
+                                                                        gap: '3px',
+                                                                        marginTop: '4px'
+                                                                    }}>
+                                                                        {abilityEngravings.map((eng, i) => (
+                                                                            <div key={i} style={{
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                gap: '6px'
+                                                                            }}>
+                                                                                <span style={{
+                                                                                    color: eng.isPenalty ? '#ef5350' : '#81c784',
+                                                                                    fontWeight: 'bold'
+                                                                                }}>[{eng.name}]</span>
+                                                                                <span style={{
+                                                                                    color: '#fff',
+                                                                                    fontWeight: 'bold'
+                                                                                }}>Lv.{eng.level}</span>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                ) : options.length > 0 ? (
+                                                                    <div style={{
+                                                                        display: 'flex',
+                                                                        flexDirection: 'column',
+                                                                        gap: '2px'
+                                                                    }}>
+                                                                        {options.map((opt, i) => <div
+                                                                            key={i}>{renderOption(opt, eq.type)}</div>)}
+                                                                    </div>
+                                                                ) : <span style={{color: '#666'}}>옵션 정보 없음</span>}
+
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style={{
+                                    background: 'var(--bg-card)',
+                                    padding: '20px',
+                                    borderRadius: '12px',
+                                    border: '1px solid var(--border-color)'
+                                }}>
+                                    <h3 style={{
+                                        margin: '0 0 15px 0',
+                                        fontSize: '18px',
+                                        color: '#fff',
+                                        borderBottom: '1px solid rgba(255,255,255,0.1)',
+                                        paddingBottom: '10px',
+                                        display: 'flex',
+                                        alignItems: 'baseline',
+                                        gap: '8px'
+                                    }}>
+                                        보석
+                                        <span style={{
+                                            fontSize: '13px',
+                                            color: '#aaa',
+                                            fontWeight: 'normal'
+                                        }}>{getGemSummary()}</span>
+                                    </h3>
+                                    {character.gems.length > 0 ? (
+                                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(11, 1fr)', gap: '5px'}}>
+                                            {character.gems
+                                                .sort((a, b) => {
+                                                    const isDmgA = isDamageGem(a);
+                                                    const isDmgB = isDamageGem(b);
+                                                    if (isDmgA && !isDmgB) return -1;
+                                                    if (!isDmgA && isDmgB) return 1;
+                                                    if (b.level !== a.level) return b.level - a.level;
+                                                    return a.name.localeCompare(b.name);
+                                                })
+                                                .map((gem, index) => {
+                                                    const isDmg = isDamageGem(gem);
+                                                    const bgColor = isDmg ? 'rgba(255, 87, 34, 0.15)' : 'rgba(33, 150, 243, 0.15)';
+
+                                                    let skillIcon = gem.skillIcon;
+                                                    if (!skillIcon) {
+                                                        skillIcon = findSkillIconFallback(gem.tooltip, character.skills) || undefined;
+                                                    }
+
+                                                    return (
+                                                        <div key={index} style={{
+                                                            position: 'relative',
+                                                            width: '100%',
+                                                            aspectRatio: '1/1',
+                                                            borderRadius: '6px',
+                                                            overflow: 'hidden',
+                                                            background: bgColor,
+                                                            border: `1px solid ${getGradeColor(gem.grade)}`,
+                                                            padding: '2px'
+                                                        }} title={gem.name}>
+                                                            <img src={gem.icon} alt={gem.name} style={{
+                                                                width: '100%',
+                                                                height: '100%',
+                                                                objectFit: 'cover',
+                                                                borderRadius: '4px'
+                                                            }}/>
+                                                            <div style={{
+                                                                position: 'absolute',
+                                                                bottom: 0,
+                                                                right: 0,
+                                                                background: 'rgba(0,0,0,0.7)',
+                                                                color: '#fff',
+                                                                fontSize: '11px',
+                                                                padding: '1px 4px',
+                                                                borderRadius: '4px 0 0 0'
+                                                            }}>{gem.level}</div>
+                                                            {skillIcon && (
+                                                                <div style={{
+                                                                    position: 'absolute',
+                                                                    bottom: '2px',
+                                                                    left: '2px',
+                                                                    width: '18px',
+                                                                    height: '18px',
+                                                                    borderRadius: '3px',
+                                                                    overflow: 'hidden',
+                                                                    border: '1px solid rgba(0,0,0,0.6)',
+                                                                    zIndex: 2
+                                                                }}>
+                                                                    <img src={skillIcon} alt="skill" style={{
+                                                                        width: '100%',
+                                                                        height: '100%',
+                                                                        objectFit: 'cover'
+                                                                    }}/>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                        </div>
+                                    ) : (
+                                        <div style={{color: '#aaa', fontSize: '14px'}}>장착된 보석이 없습니다.</div>
+                                    )}
+                                </div>
+
+                                <div style={{
+                                    background: 'var(--bg-card)',
+                                    padding: '20px',
+                                    borderRadius: '12px',
+                                    border: '1px solid var(--border-color)'
+                                }}>
+                                    <h3 style={{
+                                        margin: '0 0 15px 0',
+                                        fontSize: '18px',
+                                        color: '#fff',
+                                        borderBottom: '1px solid rgba(255,255,255,0.1)',
+                                        paddingBottom: '10px'
+                                    }}>카드</h3>
+
+                                    <div style={{ display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                            {character.cards.map((card, index) => (
+                                                <div key={index} style={{ width: '80px', flexShrink: 0, textAlign: 'center' }}>
+                                                    <div style={{ width: '80px', height: '110px', borderRadius: '6px', overflow: 'hidden', border: `1px solid ${getGradeColor(card.grade)}` }}>
+                                                        <img src={card.icon} alt={card.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div style={{
+                                            flex: 1,
+                                            minWidth: '250px',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            justifyContent: 'center',
+                                            borderLeft: '1px solid rgba(255,255,255,0.1)',
+                                            paddingLeft: '24px'
+                                        }}>
+                                            {(() => {
+                                                const { stats, specials } = getAggregatedCardEffects();
+
+                                                if (stats.length === 0 && specials.length === 0) {
+                                                    return character.cardEffects.map((effect, idx) => {
+                                                        const lastItem = effect.items[effect.items.length - 1];
+                                                        return lastItem ? (
+                                                            <div key={idx} style={{ fontSize: '15px', color: '#81c784', fontWeight: 'bold', marginBottom: '4px' }}>
+                                                                {lastItem.name}
+                                                            </div>
+                                                        ) : null;
+                                                    });
+                                                }
+
+                                                return (
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                        <div style={{ fontSize: '15px', color: '#81c784', fontWeight: 'bold' }}>
+                                                            {character.cardEffects.map(e => e.items[e.items.length - 1]?.name).filter(Boolean).join(' / ')}
+                                                        </div>
+
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                            {stats.map((stat, idx) => (
+                                                                <div key={`stat-${idx}`} style={{ fontSize: '14px', color: '#ddd' }}>
+                                                                    • {stat}
+                                                                </div>
+                                                            ))}
+                                                            {specials.map((sp, idx) => (
+                                                                <div key={`sp-${idx}`} style={{ fontSize: '14px', color: '#ddd' }}>
+                                                                    • {sp}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
                         </div>
-                    </div>
+                    )}
+
+                    {activeTab === '스킬' && renderSkillTab()}
+                    {activeTab === '아크패시브' && renderArkPassiveTab()}
+                    {activeTab === '아크 그리드' && renderArkGridTab()}
                 </div>
             )}
         </div>

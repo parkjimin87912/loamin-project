@@ -116,6 +116,7 @@ public class LostArkCharacterDto {
         private String runeName;
         private String runeIcon;
         private String runeGrade;
+        private String tooltip; // 🌟 툴팁 필드 추가
     }
 
     @Data
@@ -137,7 +138,7 @@ public class LostArkCharacterDto {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ArkPassiveDto {
         private boolean isArkPassive;
-        private String title; // 🌟 아크 패시브 타이틀 (예: 중력 수련) 필드 추가
+        private String title;
         private List<ArkPassivePointDto> points;
         private List<ArkPassiveEffectDto> effects;
     }
@@ -151,6 +152,7 @@ public class LostArkCharacterDto {
         private int value;
         private int rank;
         private int level;
+        private String tooltip; // 🌟 툴팁 필드 추가
     }
 
     @Data
@@ -162,6 +164,7 @@ public class LostArkCharacterDto {
         private String description;
         private String icon;
         private String grade;
+        private String tooltip; // 🌟 툴팁 필드 추가
     }
 
     @Data
