@@ -180,6 +180,7 @@ public class LostArkApiService {
                     String fullName = slot.path("Name").asText(""); // ex: "질서의 해 코어 : 그라비티 코어"
                     String icon = slot.path("Icon").asText("");
                     int point = slot.path("Point").asInt(0);
+                    String tooltip = slot.path("Tooltip").asText(""); // 🌟 툴팁 필드 추가
 
                     String coreType = fullName;
                     String effectName = "알 수 없음";
@@ -190,7 +191,21 @@ public class LostArkApiService {
                         effectName = parts[1].trim();
                     }
 
-                    arkGrids.add(new LostArkCharacterDto.ArkGridDto(coreType, effectName, point, icon));
+                    // 🌟 Gems 파싱 추가
+                    List<LostArkCharacterDto.ArkGridGemDto> gemsList = new ArrayList<>();
+                    if (slot.has("Gems")) {
+                        slot.path("Gems").forEach(gem -> {
+                            gemsList.add(new LostArkCharacterDto.ArkGridGemDto(
+                                    gem.path("Index").asInt(0),
+                                    gem.path("Icon").asText(""),
+                                    gem.path("IsActive").asBoolean(false),
+                                    gem.path("Grade").asText(""),
+                                    gem.path("Tooltip").asText("")
+                            ));
+                        });
+                    }
+
+                    arkGrids.add(new LostArkCharacterDto.ArkGridDto(coreType, effectName, point, icon, tooltip, gemsList));
                 });
             }
             dto.setArkGrids(arkGrids);

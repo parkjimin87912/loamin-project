@@ -1,6 +1,7 @@
 package dev.j2m2n.backendserver.dtos;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -187,5 +188,20 @@ public class LostArkCharacterDto {
         private String effectName;
         private int point;
         private String icon;
+        private String tooltip; // 🌟 툴팁 필드 추가
+        private List<ArkGridGemDto> gems; // 🌟 Gems 필드 추가
+    }
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class ArkGridGemDto {
+        private int index;
+        private String icon;
+        @JsonProperty("isActive")
+        private boolean isActive;
+        private String grade;
+        private String tooltip;
     }
 }

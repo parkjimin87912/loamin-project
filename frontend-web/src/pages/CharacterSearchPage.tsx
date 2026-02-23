@@ -96,6 +96,13 @@ interface ArkGrid {
     point: number;
     icon: string;
     tooltip: string; // 🌟 툴팁 필드 추가
+    gems?: { // 🌟 gems 필드 추가
+        index: number;
+        icon: string;
+        isActive: boolean;
+        grade: string;
+        tooltip: string;
+    }[];
 }
 
 interface CharacterInfo {
@@ -530,6 +537,61 @@ export default function CharacterSearchPage() {
         }
     };
 
+    const parseSkillTooltip = (tooltip: string) => {
+        try {
+            const json = JSON.parse(tooltip);
+            const attributes: { [key: string]: string } = {};
+
+            const traverse = (obj: any) => {
+                if (!obj) return;
+
+                if (obj.type === "SingleTextBox" && obj.value) {
+                    // 🌟 텍스트 정제 로직 개선
+                    let text = obj.value.replace(/<BR>|<br>/gi, ' | ');
+                    text = text.replace(/<[^>]*>/g, ' '); // 태그를 공백으로 치환하여 단어 붙음 방지
+                    text = text.replace(/\s+/g, ' ').trim(); // 연속된 공백 제거
+
+                    // 정규식으로 각 속성 추출
+                    const staggerMatch = text.match(/무력화\s*:\s*(최상|상|중|하)/);
+                    if (staggerMatch) attributes['Stagger'] = staggerMatch[1];
+
+                    const destMatch = text.match(/(?:부위\s*)?파괴\s*:\s*(?:레벨\s*)?(\d+)/);
+                    if (destMatch) attributes['Destruction'] = `Lv.${destMatch[1]}`;
+
+                    if (text.includes("슈퍼아머")) {
+                        const saMatch = text.match(/슈퍼아머\s*:\s*([^|]+)/);
+                        if (saMatch) {
+                            let saValue = saMatch[1].trim();
+                            // 다음 속성이 시작되기 전까지만 자르기 (예: "경직 면역 | 공격 타입...")
+                            const nextAttrIndex = saValue.search(/(?:무력화|파괴|공격\s*타입|카운터)\s*:/);
+                            if (nextAttrIndex > 0) {
+                                saValue = saValue.substring(0, nextAttrIndex).trim();
+                            }
+                            // 파이프(|)가 포함되어 있다면 그 전까지만
+                            if (saValue.includes('|')) {
+                                saValue = saValue.split('|')[0].trim();
+                            }
+                            attributes['SuperArmor'] = saValue;
+                        }
+                    }
+
+                    if (text.includes("헤드 어택")) attributes['HeadAttack'] = "가능";
+                    if (text.includes("백 어택")) attributes['BackAttack'] = "가능";
+                    if (text.includes("카운터")) attributes['Counter'] = "가능";
+                }
+
+                if (typeof obj === 'object') {
+                    Object.values(obj).forEach(child => traverse(child));
+                }
+            };
+
+            traverse(json);
+            return attributes;
+        } catch {
+            return {};
+        }
+    };
+
     const isCooldownGem = (gem: Gem) => {
         if (!gem.tooltip) return false;
         return gem.tooltip.includes("재사용 대기시간");
@@ -886,207 +948,185 @@ export default function CharacterSearchPage() {
         );
     };
 
+    // 🌟 젬 툴팁 파싱 함수 추가
+    const parseArkGridGemTooltip = (tooltip: string) => {
+        try {
+            const json = JSON.parse(tooltip);
+            let description = "";
+            const traverse = (obj: any) => {
+                if (!obj) return;
+                if (obj.type === "ItemPartBox" && obj.value) {
+                    const title = obj.value.Element_000;
+                    if (typeof title === 'string' && title.replace(/<[^>]*>/g, '').trim() === "젬 효과") {
+                        description = obj.value.Element_001;
+                    }
+                }
+                if (typeof obj === 'object') {
+                    Object.values(obj).forEach(child => traverse(child));
+                }
+            };
+            traverse(json);
+            return description;
+        } catch {
+            return "";
+        }
+    };
+
+    const parseArkGridTooltip = (tooltip: string) => {
+        try {
+            const json = JSON.parse(tooltip);
+            let description = "";
+            
+            const traverse = (obj: any) => {
+                if (!obj) return;
+                if (obj.type === "ItemPartBox" && obj.value) {
+                    const title = obj.value.Element_000;
+                    if (typeof title === 'string' && title.replace(/<[^>]*>/g, '').trim() === "코어 옵션") {
+                        description = obj.value.Element_001;
+                    }
+                }
+                if (typeof obj === 'object') {
+                    Object.values(obj).forEach(child => traverse(child));
+                }
+            };
+            
+            traverse(json);
+            return description;
+        } catch {
+            return "";
+        }
+    };
+
+    const formatArkGridEffects = (html: string) => {
+        if (!html) return [];
+        let text = html.replace(/<br\s*\/?>/gi, '\n');
+        text = text.replace(/<[^>]+>/g, '');
+        return text.split('\n').map(line => line.trim()).filter(line => line);
+    };
+
     const renderArkGridTab = () => {
         if (!character?.arkGrids || character.arkGrids.length === 0) {
             return <div style={{textAlign: 'center', color: '#aaa', padding: '20px'}}>아크 그리드 정보가 없습니다.</div>;
         }
 
-        // 🌟 젬 정보 매핑을 위한 준비
-        // 1. 젬을 슬롯 번호나 이름으로 쉽게 찾을 수 있도록 맵 생성 (필요시)
-        // 2. 아크 그리드 효과 이름과 매칭되는 젬 찾기
-        //    - 아크 그리드 효과 이름(예: "그라비티 코어")이 젬 이름(예: "7레벨 겁화의 보석 (그라비티 코어)")에 포함되는지 확인
-        //    - 또는 젬의 스킬 아이콘과 아크 그리드 아이콘 비교 (정확하지 않을 수 있음)
-        //    - 가장 확실한 건 이름 매칭
-
-        // 🌟 아크 그리드 정렬 순서 정의
-        const gridOrder = [
-            "질서의 해 코어",
-            "혼돈의 해 코어",
-            "질서의 달 코어",
-            "혼돈의 달 코어",
-            "질서의 별 코어",
-            "혼돈의 별 코어"
-        ];
-
-        // 🌟 정렬된 그리드 목록 생성
-        const sortedGrids = [...character.arkGrids].sort((a, b) => {
-            const indexA = gridOrder.indexOf(a.coreType);
-            const indexB = gridOrder.indexOf(b.coreType);
-            // 정의된 순서에 없으면 뒤로 보냄
-            if (indexA === -1) return 1;
-            if (indexB === -1) return -1;
-            return indexA - indexB;
-        });
-
-        // 🌟 총 젬 스탯 효과 계산 (예시: 멸화/홍염 개수 등)
-        // 실제 스탯 효과(공격력 증가 등)는 API에서 직접 주지 않으면 계산하기 복잡함.
-        // 여기서는 "장착된 젬 요약"을 보여주는 것으로 대체하거나, 
-        // 아크 그리드 포인트 합계를 보여줄 수 있음.
-        const totalPoints = sortedGrids.reduce((sum, grid) => sum + grid.point, 0);
-
         return (
-            <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
-                {/* 🌟 상단 요약 섹션 */}
-                <div style={{
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: '12px',
-                    padding: '20px',
-                    marginBottom: '30px',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    gap: '30px'
-                }}>
-                    <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '14px', color: '#aaa', marginBottom: '5px' }}>총 아크 그리드 포인트</div>
-                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f97316' }}>{totalPoints}P</div>
-                    </div>
-                    <div style={{ width: '1px', height: '40px', background: 'rgba(255,255,255,0.1)' }}></div>
-                    <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '14px', color: '#aaa', marginBottom: '5px' }}>장착 젬 요약</div>
-                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#fff' }}>{getGemSummary() || '-'}</div>
-                    </div>
-                </div>
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr',
+                gap: '20px',
+                padding: '20px',
+                maxWidth: '1200px',
+                margin: '0 auto'
+            }}>
+                {character.arkGrids.map((grid, idx) => {
+                    const tooltipText = parseArkGridTooltip(grid.tooltip);
+                    const effects = formatArkGridEffects(tooltipText);
 
-                {/* 🌟 아크 그리드 리스트 (해 -> 달 -> 별 순서) */}
-                <div style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', 
-                    gap: '20px' 
-                }}>
-                    {sortedGrids.map((grid, idx) => {
-                        // 해당 그리드 효과와 매칭되는 젬 찾기
-                        // 젬 이름에 그리드 효과 이름이 포함되어 있는지 확인 (가장 단순한 매칭)
-                        // 예: grid.effectName = "그라비티 코어", gem.name = "10레벨 멸화의 보석 (그라비티 코어)"
-                        // 괄호 안의 스킬명을 추출해서 비교하는 것이 더 정확할 수 있음.
-                        
-                        const matchedGem = character.gems.find(gem => {
-                            // 젬 이름에서 괄호 안의 텍스트 추출
-                            const match = gem.name.match(/\((.*?)\)/);
-                            if (match) {
-                                return match[1] === grid.effectName;
-                            }
-                            return false;
-                        });
-
-                        // 🌟 툴팁에서 효과 설명 추출
-                        let effectDescription = "";
-                        try {
-                            const tooltipJson = JSON.parse(grid.tooltip);
-                            // Element_006이 보통 "코어 옵션" (ItemPartBox)
-                            if (tooltipJson.Element_006?.value?.Element_001) {
-                                effectDescription = tooltipJson.Element_006.value.Element_001;
-                            }
-                        } catch (e) {}
-
-                        return (
-                            <div key={idx} style={{
-                                background: 'var(--bg-card)',
-                                border: '1px solid var(--border-color)',
-                                borderRadius: '12px',
-                                padding: '20px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '15px'
-                            }}>
-                                {/* 코어 정보 */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    return (
+                        <div key={idx} style={{
+                            background: 'var(--bg-card)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '12px',
+                            padding: '15px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '15px'
+                        }}>
+                            <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
+                                <div style={{
+                                    width: '48px',
+                                    height: '48px',
+                                    borderRadius: '8px',
+                                    overflow: 'hidden',
+                                    border: '1px solid #333',
+                                    flexShrink: 0
+                                }}>
+                                    <img src={grid.icon} alt={grid.effectName} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+                                </div>
+                                <div style={{flex: 1, overflow: 'hidden'}}>
+                                    <div style={{fontSize: '12px', color: '#aaa', marginBottom: '2px'}}>{grid.coreType}</div>
+                                    <div style={{fontSize: '16px', fontWeight: 'bold', color: '#f97316', marginBottom: '4px'}}>{grid.effectName}</div>
                                     <div style={{
-                                        width: '56px',
-                                        height: '56px',
-                                        borderRadius: '12px',
-                                        overflow: 'hidden',
-                                        border: '1px solid #333',
-                                        flexShrink: 0,
-                                        background: '#000'
+                                        display: 'inline-block',
+                                        background: 'rgba(255, 255, 255, 0.1)',
+                                        padding: '2px 8px',
+                                        borderRadius: '4px',
+                                        fontSize: '12px',
+                                        fontWeight: 'bold',
+                                        color: '#fff'
                                     }}>
-                                        <img src={grid.icon} alt={grid.effectName} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontSize: '13px', color: '#aaa', marginBottom: '4px' }}>{grid.coreType}</div>
-                                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#fff', marginBottom: '6px' }}>{grid.effectName}</div>
-                                        <div style={{
-                                            display: 'inline-block',
-                                            background: 'rgba(249, 115, 22, 0.15)',
-                                            border: '1px solid rgba(249, 115, 22, 0.3)',
-                                            padding: '2px 10px',
-                                            borderRadius: '4px',
-                                            fontSize: '13px',
-                                            fontWeight: 'bold',
-                                            color: '#f97316'
-                                        }}>
-                                            {grid.point}P
-                                        </div>
+                                        {grid.point}P
                                     </div>
                                 </div>
-
-                                {/* 🌟 코어 효과 설명 (툴팁에서 추출) */}
-                                {effectDescription && (
-                                    <div style={{
-                                        background: 'rgba(0, 0, 0, 0.2)',
-                                        borderRadius: '8px',
-                                        padding: '10px',
-                                        fontSize: '12px',
-                                        color: '#ddd',
-                                        lineHeight: '1.5'
-                                    }} dangerouslySetInnerHTML={{ __html: effectDescription }} />
-                                )}
-
-                                {/* 매칭된 젬 정보 */}
-                                {matchedGem ? (
-                                    <div style={{
-                                        background: 'rgba(255, 255, 255, 0.03)',
-                                        borderRadius: '8px',
-                                        padding: '10px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '10px',
-                                        border: `1px solid ${getGradeColor(matchedGem.grade)}`
-                                    }}>
-                                        <div style={{
-                                            position: 'relative',
-                                            width: '40px',
-                                            height: '40px',
-                                            borderRadius: '4px',
-                                            overflow: 'hidden',
-                                            flexShrink: 0
-                                        }}>
-                                            <img src={matchedGem.icon} alt={matchedGem.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                            <div style={{
-                                                position: 'absolute',
-                                                bottom: 0,
-                                                right: 0,
-                                                background: 'rgba(0,0,0,0.7)',
-                                                color: '#fff',
-                                                fontSize: '11px',
-                                                padding: '0 3px',
-                                                borderRadius: '3px 0 0 0'
-                                            }}>{matchedGem.level}</div>
-                                        </div>
-                                        <div style={{ flex: 1, overflow: 'hidden' }}>
-                                            <div style={{ fontSize: '13px', color: getGradeColor(matchedGem.grade), fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                {matchedGem.name}
-                                            </div>
-                                            {/* 젬 효과 요약 (예: 피해 증가 40%) - 툴팁 파싱 필요하지만 여기선 생략하거나 간단히 표시 */}
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div style={{
-                                        background: 'rgba(255, 255, 255, 0.03)',
-                                        borderRadius: '8px',
-                                        padding: '10px',
-                                        textAlign: 'center',
-                                        color: '#666',
-                                        fontSize: '13px'
-                                    }}>
-                                        장착된 젬 없음
-                                    </div>
-                                )}
                             </div>
-                        );
-                    })}
-                </div>
+                            
+                            {effects.length > 0 && (
+                                <div style={{
+                                    background: 'rgba(0, 0, 0, 0.2)',
+                                    borderRadius: '8px',
+                                    padding: '10px',
+                                    fontSize: '13px',
+                                    color: '#ddd',
+                                    lineHeight: '1.5'
+                                }}>
+                                    {effects.map((line, i) => (
+                                        <div key={i} style={{marginBottom: '4px'}}>
+                                            {line}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* 🌟 보석 렌더링 추가 */}
+                            {grid.gems && grid.gems.length > 0 && (
+                                <div style={{
+                                    marginTop: '5px',
+                                    paddingTop: '10px',
+                                    borderTop: '1px solid rgba(255,255,255,0.1)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '8px'
+                                }}>
+                                    <div style={{fontSize: '12px', fontWeight: 'bold', color: '#aaa'}}>장착된 젬</div>
+                                    <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '10px'}}>
+                                        {grid.gems.map((gem, gIdx) => {
+                                            const gemEffect = parseArkGridGemTooltip(gem.tooltip);
+                                            const gemEffects = formatArkGridEffects(gemEffect);
+                                            
+                                            return (
+                                                <div key={gIdx} style={{
+                                                    display: 'flex',
+                                                    gap: '10px',
+                                                    background: 'rgba(255,255,255,0.03)',
+                                                    padding: '8px',
+                                                    borderRadius: '6px',
+                                                    border: `1px solid ${getGradeColor(gem.grade)}`,
+                                                    alignItems: 'center'
+                                                }}>
+                                                    <div style={{
+                                                        width: '32px', 
+                                                        height: '32px', 
+                                                        flexShrink: 0,
+                                                        borderRadius: '4px',
+                                                        overflow: 'hidden',
+                                                        border: '1px solid #333'
+                                                    }}>
+                                                        <img src={gem.icon} alt="gem" style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+                                                    </div>
+                                                    <div style={{fontSize: '12px', color: '#ddd', lineHeight: '1.3'}}>
+                                                        {gemEffects.map((line, i) => (
+                                                            <div key={i}>{line}</div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
         );
     };
