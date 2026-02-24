@@ -175,7 +175,7 @@ export default function Layout() {
                             </NavLink>
                         </li>
                         <li>
-                            <NavLink to="/schedule" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                            <NavLink to="/calendar" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                                 게임 일정
                             </NavLink>
                         </li>

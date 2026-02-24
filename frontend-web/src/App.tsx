@@ -9,6 +9,9 @@ import ItemDetailPage from './pages/markets/ItemDetailPage';
 // 캐릭터 검색 페이지
 import CharacterSearchPage from './pages/CharacterSearchPage';
 
+// 게임 일정 페이지
+import CalendarPage from './pages/CalendarPage';
+
 // 도구 관련 페이지
 import GeneralReforgePage from './pages/tools/GeneralReforgePage';
 import AdvancedReforgePage from './pages/tools/AdvancedReforgePage';
@@ -26,6 +29,9 @@ function App() {
 
                     {/* 캐릭터 검색 */}
                     <Route path="/character" element={<CharacterSearchPage />} />
+
+                    {/* 게임 일정 */}
+                    <Route path="/calendar" element={<CalendarPage />} />
 
                     {/* 시세 정보 라우팅 */}
                     <Route path="/market/:categoryId" element={<MarketPage />} />

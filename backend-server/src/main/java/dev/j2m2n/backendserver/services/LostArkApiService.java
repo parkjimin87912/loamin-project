@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.j2m2n.backendserver.dtos.LostArkCharacterDto;
 import dev.j2m2n.backendserver.dtos.LostArkMarketItemDto;
+import dev.j2m2n.backendserver.dtos.LostArkCalendarDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,6 +35,7 @@ public class LostArkApiService {
     private static final String MARKET_API_URL = "https://developer-lostark.game.onstove.com/markets/items";
     private static final String AUCTION_API_URL = "https://developer-lostark.game.onstove.com/auctions/items";
     private static final String CHARACTER_API_URL = "https://developer-lostark.game.onstove.com/armories/characters";
+    private static final String CALENDAR_API_URL = "https://developer-lostark.game.onstove.com/gamecontents/calendar";
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -538,5 +540,49 @@ public class LostArkApiService {
                 0,
                 iconUrl
         );
+    }
+    
+    // 🌟 캘린더 API 호출 메서드 추가
+    public List<LostArkCalendarDto> getCalendar() {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authorization", "bearer " + apiKey);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<String> request = new HttpEntity<>(headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(CALENDAR_API_URL, HttpMethod.GET, request, String.class);
+            
+            if (response.getBody() == null) return new ArrayList<>();
+
+            JsonNode root = objectMapper.readTree(response.getBody());
+            List<LostArkCalendarDto> calendarList = new ArrayList<>();
+
+            if (root.isArray()) {
+                root.forEach(node -> {
+                    String categoryName = node.path("CategoryName").asText("");
+                    String showName = node.path("ContentsName").asText("");
+                    String location = node.path("Location").asText("");
+                    String image = node.path("ContentsIcon").asText("");
+                    int minItemLevel = node.path("MinItemLevel").asInt(0); // 🌟 추가
+
+                    List<String> rewardItems = new ArrayList<>();
+                    node.path("RewardItems").forEach(r -> {
+                        if (r.has("Items")) {
+                            r.path("Items").forEach(i -> rewardItems.add(i.path("Name").asText()));
+                        }
+                    });
+
+                    List<String> startTimes = new ArrayList<>();
+                    node.path("StartTimes").forEach(t -> startTimes.add(t.asText()));
+
+                    calendarList.add(new LostArkCalendarDto(categoryName, showName, rewardItems, location, startTimes, image, minItemLevel));
+                });
+            }
+            return calendarList;
+
+        } catch (Exception e) {
+            log.error("캘린더 API 호출 실패: {}", e.getMessage());
+            return new ArrayList<>();
+        }
     }
 }
