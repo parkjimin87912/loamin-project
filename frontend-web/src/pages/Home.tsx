@@ -1,8 +1,17 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../App.css';
 
 export default function Home() {
     const navigate = useNavigate();
+    const [searchName, setSearchName] = useState('');
+
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (searchName.trim()) {
+            navigate(`/character?name=${searchName.trim()}`);
+        }
+    };
 
     // [왼쪽] 편의 도구 데이터
     const utilityTools = [
@@ -64,10 +73,46 @@ export default function Home() {
 
     return (
         <div className="container">
-            {/* 1. 상단 배너 (검색창 제거) */}
-            <section className="banner-area" style={{ marginBottom: '40px', padding: '50px 20px', height: 'auto', minHeight:'160px' }}>
+            {/* 1. 상단 배너 (검색창 추가) */}
+            <section className="banner-area" style={{ marginBottom: '40px', padding: '50px 20px', height: 'auto', minHeight:'200px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                 <div className="banner-title" style={{ fontSize: '3rem', letterSpacing: '2px', marginBottom:'10px' }}>LOAMIN</div>
-                <div className="banner-desc" style={{ opacity: 0.8, fontSize: '1.1rem' }}>로스트아크의 모든 정보를 한눈에, 더 스마트하게</div>
+                <div className="banner-desc" style={{ opacity: 0.8, fontSize: '1.1rem', marginBottom: '30px' }}>로스트아크의 모든 정보를 한눈에, 더 스마트하게</div>
+                
+                <form onSubmit={handleSearch} style={{ width: '100%', maxWidth: '600px', position: 'relative' }}>
+                    <input 
+                        type="text" 
+                        placeholder="캐릭터명을 입력하세요" 
+                        value={searchName}
+                        onChange={(e) => setSearchName(e.target.value)}
+                        style={{
+                            width: '100%',
+                            padding: '15px 25px',
+                            borderRadius: '30px',
+                            border: 'none',
+                            background: 'rgba(255, 255, 255, 0.1)',
+                            color: '#fff',
+                            fontSize: '16px',
+                            backdropFilter: 'blur(10px)',
+                            boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+                            outline: 'none'
+                        }}
+                    />
+                    <button type="submit" style={{
+                        position: 'absolute',
+                        right: '10px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'var(--primary-color)',
+                        border: 'none',
+                        borderRadius: '20px',
+                        padding: '8px 20px',
+                        color: '#fff',
+                        fontWeight: 'bold',
+                        cursor: 'pointer'
+                    }}>
+                        검색
+                    </button>
+                </form>
             </section>
 
             {/* 2. 메인 콘텐츠 (1:1 비율 그리드) */}

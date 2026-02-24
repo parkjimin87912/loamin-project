@@ -35,7 +35,8 @@ public class LostArkCharacterDto {
 
     private List<T4EngravingDto> t4Engravings;
     private List<ArkGridDto> arkGrids;
-    private List<ArkGridEffectDto> arkGridEffects; // 🌟 아크 그리드 전체 효과 추가
+    private List<ArkGridEffectDto> arkGridEffects;
+    private List<CharacterSummaryDto> siblings; // 🌟 원정대 캐릭터 목록 추가
 
     @Data
     @AllArgsConstructor
@@ -214,5 +215,19 @@ public class LostArkCharacterDto {
         private String name;
         private int level;
         private String tooltip;
+    }
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class CharacterSummaryDto { // 🌟 원정대 캐릭터 요약 정보 DTO
+        private String serverName;
+        private String characterName;
+        private int characterLevel;
+        private String characterClassName;
+        private String itemAvgLevel;
+        private String itemMaxLevel;
+        private String characterImage; // 🌟 캐릭터 이미지 추가
     }
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import '../App.css';
 
@@ -7,6 +8,35 @@ const IDENTITY_ICONS: { [key: string]: string } = {
     "용맹의 세레나데": "https://cdn-lostark.game.onstove.com/efui_iconatlas/bard_skill/bard_skill_23.png",
     "구원의 세레나데": "https://cdn-lostark.game.onstove.com/efui_iconatlas/bard_skill/bard_skill_22.png",
 }
+
+const CLASS_IMAGE_MAP: { [key: string]: string } = {
+    "버서커": "berserker",
+    "디스트로이어": "destroyer",
+    "워로드": "warlord",
+    "홀리나이트": "holyknight",
+    "슬레이어": "slayer",
+    "아르카나": "arcana",
+    "서머너": "summoner",
+    "바드": "bard",
+    "소서리스": "sorceress",
+    "배틀마스터": "battlemaster",
+    "인파이터": "infighter",
+    "기공사": "soulmaster",
+    "창술사": "lancemaster",
+    "스트라이커": "striker",
+    "브레이커": "breaker",
+    "블레이드": "blade",
+    "데모닉": "demonic",
+    "리퍼": "reaper",
+    "소울이터": "souleater",
+    "호크아이": "hawkeye",
+    "데빌헌터": "devilhunter",
+    "블래스터": "blaster",
+    "스카우터": "scouter",
+    "건슬링어": "gunslinger",
+    "도화가": "artist",
+    "기상술사": "aeromancer"
+};
 
 interface Stat {
     type: string;
@@ -111,6 +141,16 @@ interface ArkGridEffect { // 🌟 아크 그리드 효과 인터페이스 추가
     tooltip: string;
 }
 
+interface CharacterSummary { // 🌟 원정대 캐릭터 요약 정보 인터페이스 추가
+    serverName: string;
+    characterName: string;
+    characterLevel: number;
+    characterClassName: string;
+    itemAvgLevel: string;
+    itemMaxLevel: string;
+    characterImage?: string; // 🌟 캐릭터 이미지 추가
+}
+
 interface CharacterInfo {
     serverName: string;
     characterName: string;
@@ -133,41 +173,133 @@ interface CharacterInfo {
     t4Engravings?: T4Engraving[];
     arkGrids?: ArkGrid[];
     arkGridEffects?: ArkGridEffect[]; // 🌟 아크 그리드 효과 리스트 추가
+    siblings?: CharacterSummary[]; // 🌟 원정대 캐릭터 목록 추가
 }
 
+// 🌟 직업 이미지 URL 가져오는 함수 (외부로 이동)
+const getClassImage = (className: string) => {
+    const engName = CLASS_IMAGE_MAP[className];
+    if (!engName) return '';
+    return `https://cdn-lostark.game.onstove.com/2018/obt/assets/images/common/thumb/${engName}.png`;
+};
+
+// 🌟 캐릭터 카드 컴포넌트 분리
+const CharacterCard = ({ sibling, onClick }: { sibling: CharacterSummary, onClick: (name: string) => void }) => {
+    const [imageError, setImageError] = useState(false);
+    const hasImage = !!sibling.characterImage;
+
+    return (
+        <div 
+             onClick={() => onClick(sibling.characterName)}
+             style={{
+                position: 'relative',
+                height: '400px',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                border: '1px solid var(--border-color)',
+                cursor: 'pointer',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                background: 'var(--bg-card)',
+                boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
+             }}
+             onMouseEnter={(e) => {
+                 e.currentTarget.style.transform = 'translateY(-5px)';
+                 e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.5)';
+                 e.currentTarget.style.borderColor = 'var(--primary-color)';
+             }}
+             onMouseLeave={(e) => {
+                 e.currentTarget.style.transform = 'none';
+                 e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.3)';
+                 e.currentTarget.style.borderColor = 'var(--border-color)';
+             }}
+        >
+            {hasImage && !imageError ? (
+                <img 
+                    src={sibling.characterImage}
+                    alt={sibling.characterName}
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        objectPosition: 'center top',
+                        transition: 'transform 0.3s'
+                    }}
+                    onError={() => setImageError(true)}
+                />
+            ) : (
+                <div style={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: '#1a1a1a',
+                    color: '#888',
+                    fontSize: '14px',
+                    flexDirection: 'column'
+                }}>
+                    <span>이미지를 불러올 수 없습니다</span>
+                </div>
+            )}
+
+            <div style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                padding: '20px',
+                background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 50%, transparent 100%)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px'
+            }}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                    <span style={{
+                        fontSize: '11px', 
+                        background: 'var(--primary-color)', 
+                        padding: '2px 6px', 
+                        borderRadius: '4px', 
+                        color: '#fff',
+                        fontWeight: 'bold'
+                    }}>{sibling.serverName}</span>
+                    <span style={{fontSize: '12px', color: '#ccc'}}>Lv.{sibling.characterLevel}</span>
+                </div>
+                
+                <div style={{
+                    fontSize: '20px', 
+                    fontWeight: 'bold', 
+                    color: '#fff', 
+                    margin: '4px 0',
+                    textShadow: '0 2px 4px rgba(0,0,0,0.8)'
+                }}>
+                    {sibling.characterName}
+                </div>
+                
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px'}}>
+                    <span style={{fontSize: '13px', color: '#ddd'}}>{sibling.characterClassName}</span>
+                    <span style={{fontSize: '15px', fontWeight: 'bold', color: '#ffb74d'}}>
+                        {sibling.itemAvgLevel}
+                    </span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export default function CharacterSearchPage() {
-    const [searchName, setSearchName] = useState('');
+    const [searchParams, setSearchParams] = useSearchParams();
     const [character, setCharacter] = useState<CharacterInfo | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(false);
     const [activeTab, setActiveTab] = useState('전체');
-    const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
+    // URL 쿼리 파라미터 변경 감지
     useEffect(() => {
-        const saved = localStorage.getItem('recentSearches');
-        if (saved) {
-            try {
-                setRecentSearches(JSON.parse(saved));
-            } catch (e) {
-                console.error(e)
-            }
+        const name = searchParams.get('name');
+        if (name) {
+            fetchCharacter(name);
         }
-    }, []);
-
-    const saveSearchTerm = (name: string) => {
-        const trimmed = name.trim();
-        if (!trimmed) return;
-        const updated = [trimmed, ...recentSearches.filter(s => s !== trimmed)].slice(0, 10);
-        setRecentSearches(updated);
-        localStorage.setItem('recentSearches', JSON.stringify(updated));
-    };
-
-    const removeSearchTerm = (name: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        const updated = recentSearches.filter(s => s !== name);
-        setRecentSearches(updated);
-        localStorage.setItem('recentSearches', JSON.stringify(updated));
-    };
+    }, [searchParams]);
 
     const fetchCharacter = async (name: string) => {
         setLoading(true);
@@ -178,7 +310,6 @@ export default function CharacterSearchPage() {
             const response = await axios.get(`http://localhost:8080/api/v1/characters/${name}`);
             if (response.data) {
                 setCharacter(response.data);
-                saveSearchTerm(name);
             } else {
                 setError(true);
             }
@@ -189,15 +320,8 @@ export default function CharacterSearchPage() {
         }
     };
 
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!searchName.trim()) return;
-        fetchCharacter(searchName.trim());
-    };
-
     const handleRecentClick = (name: string) => {
-        setSearchName(name);
-        fetchCharacter(name);
+        setSearchParams({ name });
     };
 
     const getGradeColor = (grade: string) => {
@@ -803,6 +927,19 @@ export default function CharacterSearchPage() {
 
         return (
             <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '20px' }}>
+                {/* 🌟 아크패시브 타이틀 */}
+                {character.arkPassive.title && (
+                    <div style={{
+                        textAlign: 'center',
+                        marginBottom: '20px',
+                        fontSize: '24px',
+                        fontWeight: 'bold',
+                        color: '#ffb74d'
+                    }}>
+                        [{character.arkPassive.title}]
+                    </div>
+                )}
+
                 {/* 포인트 요약 */}
                 <div style={{
                     display: 'flex',
@@ -1239,6 +1376,38 @@ export default function CharacterSearchPage() {
         );
     };
 
+    const renderSiblingsTab = () => {
+        if (!character?.siblings || character.siblings.length === 0) {
+            return <div style={{textAlign: 'center', color: '#aaa', padding: '20px'}}>원정대 캐릭터 정보가 없습니다.</div>;
+        }
+
+        // 레벨 높은 순으로 정렬
+        const sortedSiblings = [...character.siblings].sort((a, b) => {
+            const getLevel = (val: string) => {
+                if (!val) return 0;
+                return parseFloat(val.replace(/,/g, '')) || 0;
+            };
+            const levelA = getLevel(a.itemAvgLevel);
+            const levelB = getLevel(b.itemAvgLevel);
+            return levelB - levelA;
+        });
+
+        return (
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)', // 🌟 4열 고정
+                gap: '15px',
+                padding: '20px',
+                maxWidth: '1400px',
+                margin: '0 auto'
+            }}>
+                {sortedSiblings.map((sibling, idx) => (
+                    <CharacterCard key={idx} sibling={sibling} onClick={handleRecentClick} />
+                ))}
+            </div>
+        );
+    };
+
     const getAggregatedCardEffects = () => {
         if (!character?.cardEffects) return { stats: [], specials: [] };
 
@@ -1578,70 +1747,7 @@ export default function CharacterSearchPage() {
         <div className="container" style={{maxWidth: '1400px', margin: '0 auto', padding: '40px 20px'}}>
             <h1 style={{textAlign: 'center', marginBottom: '30px', color: '#fff'}}>🔍 캐릭터 검색</h1>
 
-            <form onSubmit={handleSearch} style={{
-                display: 'flex',
-                gap: '10px',
-                marginBottom: '10px',
-                maxWidth: '600px',
-                margin: '0 auto 10px'
-            }}>
-                <input
-                    type="text"
-                    value={searchName}
-                    onChange={(e) => setSearchName(e.target.value)}
-                    placeholder="캐릭터명을 입력하세요"
-                    style={{
-                        flex: 1,
-                        padding: '15px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--border-color)',
-                        background: 'var(--bg-input)',
-                        color: '#fff',
-                        fontSize: '16px'
-                    }}
-                />
-                <button type="submit" style={{
-                    padding: '0 30px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    background: 'var(--primary-color)',
-                    color: '#fff',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    fontSize: '16px'
-                }}>검색
-                </button>
-            </form>
-
-            {recentSearches.length > 0 && (
-                <div style={{
-                    maxWidth: '600px',
-                    margin: '0 auto 40px',
-                    display: 'flex',
-                    gap: '8px',
-                    flexWrap: 'wrap',
-                    justifyContent: 'center'
-                }}>
-                    {recentSearches.map(name => (
-                        <div key={name} onClick={() => handleRecentClick(name)} style={{
-                            background: 'rgba(255,255,255,0.1)',
-                            padding: '5px 12px',
-                            borderRadius: '15px',
-                            fontSize: '13px',
-                            color: '#ddd',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            transition: 'background 0.2s'
-                        }}>
-                            {name}
-                            <span onClick={(e) => removeSearchTerm(name, e)}
-                                  style={{color: '#aaa', fontWeight: 'bold', fontSize: '14px'}}>×</span>
-                        </div>
-                    ))}
-                </div>
-            )}
+            {/* 🌟 검색창 및 최근 검색어 제거 */}
 
             {loading && <div style={{textAlign: 'center', color: '#aaa'}}>검색 중...</div>}
             {error && <div style={{textAlign: 'center', color: '#ef5350'}}>캐릭터를 찾을 수 없습니다.</div>}
@@ -2516,6 +2622,7 @@ export default function CharacterSearchPage() {
                     {activeTab === '스킬' && renderSkillTab()}
                     {activeTab === '아크패시브' && renderArkPassiveTab()}
                     {activeTab === '아크 그리드' && renderArkGridTab()}
+                    {activeTab === '원정대' && renderSiblingsTab()}
                 </div>
             )}
         </div>
