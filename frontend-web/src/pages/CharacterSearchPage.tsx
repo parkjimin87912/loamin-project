@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import '../App.css';
 
@@ -124,6 +125,7 @@ interface ArkGrid {
     effectName: string;
     point: number;
     icon: string;
+    grade: string; // 🌟 등급 필드 추가
     tooltip: string; // 🌟 툴팁 필드 추가
     gems?: { // 🌟 gems 필드 추가
         index: number;
@@ -286,50 +288,33 @@ const CharacterCard = ({ sibling, onClick }: { sibling: CharacterSummary, onClic
 };
 
 export default function CharacterSearchPage() {
-    const [searchName, setSearchName] = useState('');
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const queryName = searchParams.get('name');
+
     const [character, setCharacter] = useState<CharacterInfo | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(false);
     const [activeTab, setActiveTab] = useState('전체');
-    const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
     useEffect(() => {
-        const saved = localStorage.getItem('recentSearches');
-        if (saved) {
-            try {
-                setRecentSearches(JSON.parse(saved));
-            } catch (e) {
-                console.error(e)
-            }
+        if (queryName) {
+            fetchCharacter(queryName);
+        } else {
+            setCharacter(null);
         }
-    }, []);
-
-    const saveSearchTerm = (name: string) => {
-        const trimmed = name.trim();
-        if (!trimmed) return;
-        const updated = [trimmed, ...recentSearches.filter(s => s !== trimmed)].slice(0, 10);
-        setRecentSearches(updated);
-        localStorage.setItem('recentSearches', JSON.stringify(updated));
-    };
-
-    const removeSearchTerm = (name: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        const updated = recentSearches.filter(s => s !== name);
-        setRecentSearches(updated);
-        localStorage.setItem('recentSearches', JSON.stringify(updated));
-    };
+    }, [queryName]);
 
     const fetchCharacter = async (name: string) => {
         setLoading(true);
         setError(false);
         setCharacter(null);
-        setActiveTab('전체'); // 🌟 검색 시 전체 탭으로 이동
+        setActiveTab('전체');
 
         try {
             const response = await axios.get(`http://localhost:8080/api/v1/characters/${name}`);
             if (response.data) {
                 setCharacter(response.data);
-                saveSearchTerm(name);
             } else {
                 setError(true);
             }
@@ -340,15 +325,8 @@ export default function CharacterSearchPage() {
         }
     };
 
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!searchName.trim()) return;
-        fetchCharacter(searchName.trim());
-    };
-
     const handleRecentClick = (name: string) => {
-        setSearchName(name);
-        fetchCharacter(name);
+        navigate(`/character?name=${name}`);
     };
 
     const getGradeColor = (grade: string) => {
@@ -904,7 +882,7 @@ export default function CharacterSearchPage() {
     const renderArkPassiveTab = () => {
         if (!character?.arkPassive) return <div style={{textAlign: 'center', color: '#aaa', padding: '20px'}}>아크패시브 정보가 없습니다.</div>;
 
-        const { points, effects } = character.arkPassive;
+        const { points, effects, title } = character.arkPassive;
 
         // 🌟 아크패시브 포인트 요약 (진화, 깨달음, 도약)
         const pointSummary = points.reduce((acc, p) => {
@@ -954,6 +932,20 @@ export default function CharacterSearchPage() {
 
         return (
             <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '20px' }}>
+                {/* 🌟 아크패시브 타이틀 추가 */}
+                {title && (
+                    <div style={{
+                        textAlign: 'center',
+                        marginBottom: '30px',
+                        fontSize: '28px',
+                        fontWeight: 'bold',
+                        color: '#ffb74d',
+                        textShadow: '0 0 10px rgba(255, 183, 77, 0.3)'
+                    }}>
+                        {title}
+                    </div>
+                )}
+
                 {/* 포인트 요약 */}
                 <div style={{
                     display: 'flex',
@@ -1266,6 +1258,13 @@ export default function CharacterSearchPage() {
                         const tooltipText = parseArkGridTooltip(grid.tooltip);
                         const effects = parseArkGridEffectsWithPoints(tooltipText);
 
+                        // 🌟 코어 등급에 따른 색상 결정 로직 추가
+                        let coreGradeColor = '#333'; // 기본값 (회색)
+                        if (grid.grade === "영웅") coreGradeColor = '#ba68c8';
+                        else if (grid.grade === "전설") coreGradeColor = '#ffb74d';
+                        else if (grid.grade === "유물") coreGradeColor = '#ff8a65';
+                        else if (grid.grade === "고대") coreGradeColor = '#e7b9ff';
+
                         return (
                             <div key={idx} style={{
                                 background: 'var(--bg-card)',
@@ -1282,14 +1281,14 @@ export default function CharacterSearchPage() {
                                         height: '48px',
                                         borderRadius: '8px',
                                         overflow: 'hidden',
-                                        border: '1px solid #333',
+                                        border: `1px solid ${coreGradeColor}`, // 🌟 테두리 색상 적용
                                         flexShrink: 0
                                     }}>
                                         <img src={grid.icon} alt={grid.effectName} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
                                     </div>
                                     <div style={{flex: 1, overflow: 'hidden'}}>
-                                        <div style={{fontSize: '12px', color: '#aaa', marginBottom: '2px'}}>{grid.coreType}</div>
-                                        <div style={{fontSize: '16px', fontWeight: 'bold', color: '#f97316', marginBottom: '4px'}}>{grid.effectName}</div>
+                                        <div style={{fontSize: '12px', color: coreGradeColor, marginBottom: '2px', fontWeight: 'bold'}}>{grid.coreType}</div> {/* 🌟 위치 변경 및 크기 조정 */}
+                                        <div style={{fontSize: '16px', fontWeight: 'bold', color: coreGradeColor, marginBottom: '4px'}}>{grid.effectName}</div> {/* 🌟 위치 변경 및 크기 조정 */}
                                         <div style={{
                                             display: 'inline-block',
                                             background: 'rgba(255, 255, 255, 0.1)',
@@ -1759,75 +1758,15 @@ export default function CharacterSearchPage() {
 
     return (
         <div className="container" style={{maxWidth: '1400px', margin: '0 auto', padding: '40px 20px'}}>
-            <h1 style={{textAlign: 'center', marginBottom: '30px', color: '#fff'}}>🔍 캐릭터 검색</h1>
-
-            <form onSubmit={handleSearch} style={{
-                display: 'flex',
-                gap: '10px',
-                marginBottom: '10px',
-                maxWidth: '600px',
-                margin: '0 auto 10px'
-            }}>
-                <input
-                    type="text"
-                    value={searchName}
-                    onChange={(e) => setSearchName(e.target.value)}
-                    placeholder="캐릭터명을 입력하세요"
-                    style={{
-                        flex: 1,
-                        padding: '15px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--border-color)',
-                        background: 'var(--bg-input)',
-                        color: '#fff',
-                        fontSize: '16px'
-                    }}
-                />
-                <button type="submit" style={{
-                    padding: '0 30px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    background: 'var(--primary-color)',
-                    color: '#fff',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    fontSize: '16px'
-                }}>검색
-                </button>
-            </form>
-
-            {recentSearches.length > 0 && (
-                <div style={{
-                    maxWidth: '600px',
-                    margin: '0 auto 40px',
-                    display: 'flex',
-                    gap: '8px',
-                    flexWrap: 'wrap',
-                    justifyContent: 'center'
-                }}>
-                    {recentSearches.map(name => (
-                        <div key={name} onClick={() => handleRecentClick(name)} style={{
-                            background: 'rgba(255,255,255,0.1)',
-                            padding: '5px 12px',
-                            borderRadius: '15px',
-                            fontSize: '13px',
-                            color: '#ddd',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            transition: 'background 0.2s'
-                        }}>
-                            {name}
-                            <span onClick={(e) => removeSearchTerm(name, e)}
-                                  style={{color: '#aaa', fontWeight: 'bold', fontSize: '14px'}}>×</span>
-                        </div>
-                    ))}
-                </div>
-            )}
-
+            
             {loading && <div style={{textAlign: 'center', color: '#aaa'}}>검색 중...</div>}
             {error && <div style={{textAlign: 'center', color: '#ef5350'}}>캐릭터를 찾을 수 없습니다.</div>}
+
+            {!loading && !error && !character && !queryName && (
+                <div style={{textAlign: 'center', color: '#aaa', marginTop: '50px', fontSize: '18px'}}>
+                    상단 검색창에서 캐릭터명을 검색해 주세요.
+                </div>
+            )}
 
             {character && (
                 <div className="content-card"
@@ -2001,8 +1940,8 @@ export default function CharacterSearchPage() {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             <span>아크패시브</span>
                                             {character.arkPassive?.title && (
-                                                <span style={{ fontSize: '14px', color: '#ffb74d', fontWeight: 'bold' }}>
-                                                    [{character.arkPassive.title}]
+                                                <span style={{ fontSize: '15px', color: '#ffb74d', fontWeight: 'bold' }}>
+                                                    {character.arkPassive.title}
                                                 </span>
                                             )}
                                         </div>
@@ -2045,66 +1984,75 @@ export default function CharacterSearchPage() {
                                     </h3>
                                     {character.arkGrids && character.arkGrids.length > 0 ? (
                                         <div style={{display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '4px'}}>
-                                            {character.arkGrids.map((grid, idx) => (
-                                                <div key={idx} style={{
-                                                    display: 'flex',
-                                                    flexDirection: 'column',
-                                                    gap: '4px',
-                                                    background: 'rgba(255,255,255,0.03)',
-                                                    padding: '8px 2px',
-                                                    borderRadius: '8px',
-                                                    alignItems: 'center',
-                                                    height: '100%'
-                                                }}>
-                                                    <div style={{
-                                                        width: '36px',
-                                                        height: '36px',
-                                                        borderRadius: '6px',
-                                                        overflow: 'hidden',
-                                                        border: 'none',
-                                                        flexShrink: 0
-                                                    }}>
-                                                        <img src={grid.icon} alt={grid.effectName}
-                                                             style={{width: '100%', height: '100%', objectFit: 'cover'}}/>
-                                                    </div>
-                                                    <div style={{
+                                            {character.arkGrids.map((grid, idx) => {
+                                                // 🌟 코어 등급에 따른 색상 결정 로직 추가
+                                                let coreGradeColor = '#333'; // 기본값 (회색)
+                                                if (grid.grade === "영웅") coreGradeColor = '#ba68c8';
+                                                else if (grid.grade === "전설") coreGradeColor = '#ffb74d';
+                                                else if (grid.grade === "유물") coreGradeColor = '#ff8a65';
+                                                else if (grid.grade === "고대") coreGradeColor = '#e7b9ff';
+
+                                                return (
+                                                    <div key={idx} style={{
                                                         display: 'flex',
                                                         flexDirection: 'column',
+                                                        gap: '4px',
+                                                        background: 'rgba(255,255,255,0.03)',
+                                                        padding: '8px 2px',
+                                                        borderRadius: '8px',
                                                         alignItems: 'center',
-                                                        gap: '3px',
-                                                        width: '100%',
-                                                        flex: 1
+                                                        height: '100%'
                                                     }}>
                                                         <div style={{
-                                                            fontSize: '11px',
-                                                            fontWeight: 'bold',
-                                                            color: '#f97316',
-                                                            textAlign: 'center',
-                                                            lineHeight: '1.2',
-                                                            width: '100%',
-                                                            wordBreak: 'keep-all',
-                                                            display: '-webkit-box',
-                                                            WebkitLineClamp: 2,
-                                                            WebkitBoxOrient: 'vertical',
+                                                            width: '36px',
+                                                            height: '36px',
+                                                            borderRadius: '6px',
                                                             overflow: 'hidden',
-                                                            flex: 1
+                                                            border: `1px solid ${coreGradeColor}`, // 🌟 테두리 색상 적용
+                                                            flexShrink: 0
                                                         }}>
-                                                            {grid.effectName}
+                                                            <img src={grid.icon} alt={grid.effectName}
+                                                                 style={{width: '100%', height: '100%', objectFit: 'cover'}}/>
                                                         </div>
                                                         <div style={{
-                                                            fontSize: '10px',
-                                                            fontWeight: 'bold',
-                                                            color: '#fff',
-                                                            background: 'rgba(0,0,0,0.5)',
-                                                            padding: '2px 6px',
-                                                            borderRadius: '8px',
-                                                            marginTop: 'auto'
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            alignItems: 'center',
+                                                            gap: '3px',
+                                                            width: '100%',
+                                                            flex: 1
                                                         }}>
-                                                            {grid.point}P
+                                                            <div style={{
+                                                                fontSize: '11px',
+                                                                fontWeight: 'bold',
+                                                                color: coreGradeColor, // 🌟 텍스트 색상 적용
+                                                                textAlign: 'center',
+                                                                lineHeight: '1.2',
+                                                                width: '100%',
+                                                                wordBreak: 'keep-all',
+                                                                display: '-webkit-box',
+                                                                WebkitLineClamp: 2,
+                                                                WebkitBoxOrient: 'vertical',
+                                                                overflow: 'hidden',
+                                                                flex: 1
+                                                            }}>
+                                                                {grid.effectName}
+                                                            </div>
+                                                            <div style={{
+                                                                fontSize: '10px',
+                                                                fontWeight: 'bold',
+                                                                color: '#fff',
+                                                                background: 'rgba(0,0,0,0.5)',
+                                                                padding: '2px 6px',
+                                                                borderRadius: '8px',
+                                                                marginTop: 'auto'
+                                                            }}>
+                                                                {grid.point}P
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     ) : (
                                         <div style={{

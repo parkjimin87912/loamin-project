@@ -190,6 +190,7 @@ public class LostArkCharacterDto {
         private String effectName;
         private int point;
         private String icon;
+        private String grade; // 🌟 등급 필드 추가
         private String tooltip; // 🌟 툴팁 필드 추가
         private List<ArkGridGemDto> gems; // 🌟 Gems 필드 추가
     }

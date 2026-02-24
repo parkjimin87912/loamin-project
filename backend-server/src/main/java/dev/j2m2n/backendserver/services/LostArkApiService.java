@@ -77,7 +77,7 @@ public class LostArkApiService {
                     if (pm.find()) points = Integer.parseInt(pm.group(1));
 
                     // 수정된 DTO에 맞춰 툴팁과 보석 리스트는 빈 값으로 처리하여 크롤링 결과 삽입
-                    list.add(new LostArkCharacterDto.ArkGridDto(coreTypes[i], effectName, points, icons[i], "", new ArrayList<>()));
+                    list.add(new LostArkCharacterDto.ArkGridDto(coreTypes[i], effectName, points, icons[i], "", "", new ArrayList<>()));
                 }
             }
         } catch (Exception e) {
@@ -199,8 +199,8 @@ public class LostArkApiService {
             if (!arkRaw.isMissingNode()) {
                 arkPassive.setArkPassive(arkRaw.path("IsArkPassive").asBoolean(false));
 
-                // DTO에 title 필드가 없다면 아래 줄은 주석 처리 또는 DTO 수정 필요
-                // arkPassive.setTitle(arkRaw.path("Title").asText(null));
+                // 🌟 DTO에 title 필드 매핑 추가
+                arkPassive.setTitle(arkRaw.path("Title").asText(null));
 
                 List<LostArkCharacterDto.ArkPassivePointDto> points = new ArrayList<>();
                 arkRaw.path("Points").forEach(p -> {
@@ -244,6 +244,7 @@ public class LostArkApiService {
                         String icon = slot.path("Icon").asText("");
                         int point = slot.path("Point").asInt(0);
                         String tooltip = slot.path("Tooltip").asText("");
+                        String grade = slot.path("Grade").asText(""); // 🌟 Grade 파싱 추가
 
                         String coreType = fullName;
                         String effectName = "알 수 없음";
@@ -268,7 +269,7 @@ public class LostArkApiService {
                             });
                         }
 
-                        arkGrids.add(new LostArkCharacterDto.ArkGridDto(coreType, effectName, point, icon, tooltip, gemsList));
+                        arkGrids.add(new LostArkCharacterDto.ArkGridDto(coreType, effectName, point, icon, grade, tooltip, gemsList));
                     });
                 }
 
