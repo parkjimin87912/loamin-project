@@ -232,31 +232,110 @@ public class LostArkApiService {
 
             // Ark Grids (크롤링 병행)
             List<LostArkCharacterDto.ArkGridDto> arkGrids = new ArrayList<>();
+            List<LostArkCharacterDto.ArkGridEffectDto> arkGridEffects = new ArrayList<>(); // 🌟 아크 그리드 전체 효과 리스트
+
             JsonNode arkGridRaw = root.path("ArkGrid");
 
             // API에서 아크그리드를 지원하는 경우 우선 파싱
-            if (!arkGridRaw.isMissingNode() && arkGridRaw.has("Slots")) {
-                arkGridRaw.path("Slots").forEach(slot -> {
-                    String fullName = slot.path("Name").asText("");
-                    String icon = slot.path("Icon").asText("");
-                    int point = slot.path("Point").asInt(0);
-                    String tooltip = slot.path("Tooltip").asText("");
+            if (!arkGridRaw.isMissingNode()) {
+                if (arkGridRaw.has("Slots")) {
+                    arkGridRaw.path("Slots").forEach(slot -> {
+                        String fullName = slot.path("Name").asText("");
+                        String icon = slot.path("Icon").asText("");
+                        int point = slot.path("Point").asInt(0);
+                        String tooltip = slot.path("Tooltip").asText("");
 
-                    String coreType = fullName;
-                    String effectName = "알 수 없음";
+                        String coreType = fullName;
+                        String effectName = "알 수 없음";
 
-                    if (fullName.contains(" : ")) {
-                        String[] parts = fullName.split(" : ", 2);
-                        coreType = parts[0].trim();
-                        effectName = parts[1].trim();
-                    }
-                    arkGrids.add(new LostArkCharacterDto.ArkGridDto(coreType, effectName, point, icon, tooltip, new ArrayList<>()));
-                });
+                        if (fullName.contains(" : ")) {
+                            String[] parts = fullName.split(" : ", 2);
+                            coreType = parts[0].trim();
+                            effectName = parts[1].trim();
+                        }
+
+                        // 🌟 Gems 파싱 추가
+                        List<LostArkCharacterDto.ArkGridGemDto> gemsList = new ArrayList<>();
+                        if (slot.has("Gems")) {
+                            slot.path("Gems").forEach(gem -> {
+                                gemsList.add(new LostArkCharacterDto.ArkGridGemDto(
+                                        gem.path("Index").asInt(0),
+                                        gem.path("Icon").asText(""),
+                                        gem.path("IsActive").asBoolean(false),
+                                        gem.path("Grade").asText(""),
+                                        gem.path("Tooltip").asText("")
+                                ));
+                            });
+                        }
+
+                        arkGrids.add(new LostArkCharacterDto.ArkGridDto(coreType, effectName, point, icon, tooltip, gemsList));
+                    });
+                }
+
+                // 🌟 Effects 파싱 추가
+                if (arkGridRaw.has("Effects")) {
+                    arkGridRaw.path("Effects").forEach(effect -> {
+                        arkGridEffects.add(new LostArkCharacterDto.ArkGridEffectDto(
+                                effect.path("Name").asText(""),
+                                effect.path("Level").asInt(0),
+                                effect.path("Tooltip").asText("")
+                        ));
+                    });
+                }
             } else {
                 // API 데이터가 없으면 크롤링으로 대체
                 arkGrids.addAll(scrapeArkGrid(characterName)); // Use addAll instead of assignment to avoid lambda error
             }
             dto.setArkGrids(arkGrids);
+            dto.setArkGridEffects(arkGridEffects); // 🌟 DTO에 설정
+
+            // 🌟 원정대 캐릭터 목록 조회
+            List<LostArkCharacterDto.CharacterSummaryDto> siblings = new ArrayList<>();
+            try {
+                String siblingsUrl = "https://developer-lostark.game.onstove.com/characters/" + encodedName + "/siblings";
+                HttpHeaders siblingsHeaders = new HttpHeaders();
+                siblingsHeaders.set("Authorization", "Bearer " + apiKey);
+                siblingsHeaders.setContentType(MediaType.APPLICATION_JSON);
+                HttpEntity<String> siblingsRequest = new HttpEntity<>(siblingsHeaders);
+
+                ResponseEntity<String> siblingsResponse = restTemplate.exchange(URI.create(siblingsUrl), HttpMethod.GET, siblingsRequest, String.class);
+                if (siblingsResponse.getBody() != null) {
+                    JsonNode siblingsRoot = objectMapper.readTree(siblingsResponse.getBody());
+                    if (siblingsRoot.isArray()) {
+                        siblingsRoot.forEach(sib -> {
+                            siblings.add(new LostArkCharacterDto.CharacterSummaryDto(
+                                    sib.path("ServerName").asText(""),
+                                    sib.path("CharacterName").asText(""),
+                                    sib.path("CharacterLevel").asInt(0),
+                                    sib.path("CharacterClassName").asText(""),
+                                    sib.path("ItemAvgLevel").asText(""),
+                                    sib.path("ItemMaxLevel").asText(""),
+                                    null // 초기에는 이미지 없음
+                            ));
+                        });
+                    }
+                }
+
+                // 🌟 병렬 스트림으로 각 캐릭터의 프로필 이미지 조회
+                siblings.parallelStream().forEach(sibling -> {
+                    try {
+                        String profileUrl = CHARACTER_API_URL + "/" + URLEncoder.encode(sibling.getCharacterName(), StandardCharsets.UTF_8.toString()) + "/profiles";
+                        // 기존 request 객체 재사용 (헤더 동일)
+                        ResponseEntity<String> profileResponse = restTemplate.exchange(URI.create(profileUrl), HttpMethod.GET, request, String.class);
+                        if (profileResponse.getBody() != null) {
+                            JsonNode profileNode = objectMapper.readTree(profileResponse.getBody());
+                            String image = profileNode.path("CharacterImage").asText(null);
+                            sibling.setCharacterImage(image);
+                        }
+                    } catch (Exception e) {
+                        // 개별 조회 실패 시 무시 (이미지 없이 표시)
+                    }
+                });
+
+            } catch (Exception e) {
+                log.warn("원정대 캐릭터 조회 실패: {}", e.getMessage());
+            }
+            dto.setSiblings(siblings);
 
             return dto;
         } catch (Exception e) {

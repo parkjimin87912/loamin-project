@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import '../App.css';
 
@@ -287,29 +286,50 @@ const CharacterCard = ({ sibling, onClick }: { sibling: CharacterSummary, onClic
 };
 
 export default function CharacterSearchPage() {
-    const [searchParams, setSearchParams] = useSearchParams();
+    const [searchName, setSearchName] = useState('');
     const [character, setCharacter] = useState<CharacterInfo | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(false);
     const [activeTab, setActiveTab] = useState('전체');
+    const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
-    // URL 쿼리 파라미터 변경 감지
     useEffect(() => {
-        const name = searchParams.get('name');
-        if (name) {
-            fetchCharacter(name);
+        const saved = localStorage.getItem('recentSearches');
+        if (saved) {
+            try {
+                setRecentSearches(JSON.parse(saved));
+            } catch (e) {
+                console.error(e)
+            }
         }
-    }, [searchParams]);
+    }, []);
+
+    const saveSearchTerm = (name: string) => {
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        const updated = [trimmed, ...recentSearches.filter(s => s !== trimmed)].slice(0, 10);
+        setRecentSearches(updated);
+        localStorage.setItem('recentSearches', JSON.stringify(updated));
+    };
+
+    const removeSearchTerm = (name: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        const updated = recentSearches.filter(s => s !== name);
+        setRecentSearches(updated);
+        localStorage.setItem('recentSearches', JSON.stringify(updated));
+    };
 
     const fetchCharacter = async (name: string) => {
         setLoading(true);
         setError(false);
         setCharacter(null);
+        setActiveTab('전체'); // 🌟 검색 시 전체 탭으로 이동
 
         try {
             const response = await axios.get(`http://localhost:8080/api/v1/characters/${name}`);
             if (response.data) {
                 setCharacter(response.data);
+                saveSearchTerm(name);
             } else {
                 setError(true);
             }
@@ -320,8 +340,15 @@ export default function CharacterSearchPage() {
         }
     };
 
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!searchName.trim()) return;
+        fetchCharacter(searchName.trim());
+    };
+
     const handleRecentClick = (name: string) => {
-        setSearchParams({ name });
+        setSearchName(name);
+        fetchCharacter(name);
     };
 
     const getGradeColor = (grade: string) => {
@@ -927,19 +954,6 @@ export default function CharacterSearchPage() {
 
         return (
             <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '20px' }}>
-                {/* 🌟 아크패시브 타이틀 */}
-                {character.arkPassive.title && (
-                    <div style={{
-                        textAlign: 'center',
-                        marginBottom: '20px',
-                        fontSize: '24px',
-                        fontWeight: 'bold',
-                        color: '#ffb74d'
-                    }}>
-                        [{character.arkPassive.title}]
-                    </div>
-                )}
-
                 {/* 포인트 요약 */}
                 <div style={{
                     display: 'flex',
@@ -1747,7 +1761,70 @@ export default function CharacterSearchPage() {
         <div className="container" style={{maxWidth: '1400px', margin: '0 auto', padding: '40px 20px'}}>
             <h1 style={{textAlign: 'center', marginBottom: '30px', color: '#fff'}}>🔍 캐릭터 검색</h1>
 
-            {/* 🌟 검색창 및 최근 검색어 제거 */}
+            <form onSubmit={handleSearch} style={{
+                display: 'flex',
+                gap: '10px',
+                marginBottom: '10px',
+                maxWidth: '600px',
+                margin: '0 auto 10px'
+            }}>
+                <input
+                    type="text"
+                    value={searchName}
+                    onChange={(e) => setSearchName(e.target.value)}
+                    placeholder="캐릭터명을 입력하세요"
+                    style={{
+                        flex: 1,
+                        padding: '15px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border-color)',
+                        background: 'var(--bg-input)',
+                        color: '#fff',
+                        fontSize: '16px'
+                    }}
+                />
+                <button type="submit" style={{
+                    padding: '0 30px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'var(--primary-color)',
+                    color: '#fff',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    fontSize: '16px'
+                }}>검색
+                </button>
+            </form>
+
+            {recentSearches.length > 0 && (
+                <div style={{
+                    maxWidth: '600px',
+                    margin: '0 auto 40px',
+                    display: 'flex',
+                    gap: '8px',
+                    flexWrap: 'wrap',
+                    justifyContent: 'center'
+                }}>
+                    {recentSearches.map(name => (
+                        <div key={name} onClick={() => handleRecentClick(name)} style={{
+                            background: 'rgba(255,255,255,0.1)',
+                            padding: '5px 12px',
+                            borderRadius: '15px',
+                            fontSize: '13px',
+                            color: '#ddd',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'background 0.2s'
+                        }}>
+                            {name}
+                            <span onClick={(e) => removeSearchTerm(name, e)}
+                                  style={{color: '#aaa', fontWeight: 'bold', fontSize: '14px'}}>×</span>
+                        </div>
+                    ))}
+                </div>
+            )}
 
             {loading && <div style={{textAlign: 'center', color: '#aaa'}}>검색 중...</div>}
             {error && <div style={{textAlign: 'center', color: '#ef5350'}}>캐릭터를 찾을 수 없습니다.</div>}
@@ -2455,10 +2532,7 @@ export default function CharacterSearchPage() {
                                         fontSize: '18px',
                                         color: '#fff',
                                         borderBottom: '1px solid rgba(255,255,255,0.1)',
-                                        paddingBottom: '10px',
-                                        display: 'flex',
-                                        alignItems: 'baseline',
-                                        gap: '8px'
+                                        paddingBottom: '10px'
                                     }}>
                                         보석
                                         <span style={{
