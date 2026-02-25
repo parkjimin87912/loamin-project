@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react'; // 🌟 useEffect 추가
+import axios from 'axios'; // 🌟 axios 추가 (API 요청용)
 import ToolsHeader from '../../components/ToolsHeader';
-// 🌟 복사하신 아이스펭 데이터 파일의 경로입니다. 파일명(data.ts)이 다르면 맞춰주세요!
+// 파일명이 다르면 맞춰주세요!
 import { refineData } from '../../data/refineData.ts';
 import '../../App.css';
 
@@ -22,15 +23,30 @@ interface HoningResult {
     maxTries: number;
 }
 
+interface MaterialUsage {
+    name: string;
+    icon: string;
+    amount: number;
+}
+
+interface Combination extends HoningResult {
+    name: string;
+    tryCost: number;
+    isBreath: boolean;
+    isBook: boolean;
+    usedMaterials: MaterialUsage[];
+}
+
 export default function GeneralReforgePage() {
     const [equipType, setEquipType] = useState<'armor' | 'weapon'>('armor');
     const [targetLevel, setTargetLevel] = useState<number>(11);
 
     const currentData = refineData[equipType]['t4_1590'][targetLevel];
 
+    // 1. 초기 기본값 설정 (API 호출 실패 시나 로딩 중에 보일 기본 시세)
     const [prices, setPrices] = useState<Record<string, number>>({
-        '운명의수호석': 0.5,
-        '운명의파괴석': 1.2,
+        '운명의수호석': 0.06,
+        '운명의파괴석': 0.15,
         '운돌': 25,
         '아비도스': 85,
         '운명파편': 0.1,
@@ -45,6 +61,75 @@ export default function GeneralReforgePage() {
         '야금술업화C': 1500,
     });
 
+    // 🌟 2. 페이지에 처음 들어왔을 때 백엔드에서 실시간 시세 불러오기
+    useEffect(() => {
+        const fetchMarketPrices = async () => {
+            try {
+                // 💡 중요: 컨트롤러 기본값이 tier 3이므로, T4 재료를 가져오기 위해 ?tier=4 추가!
+                const response = await axios.get('http://localhost:8080/api/v1/market/items?tier=4');
+                const apiData = response.data;
+
+                setPrices(prevPrices => {
+                    const newPrices = { ...prevPrices };
+                    
+                    // API 응답 이름 -> 내부 state key 매핑
+                    const nameMapping: Record<string, string> = {
+                        '운명의 수호석': '운명의수호석',
+                        '운명의 파괴석': '운명의파괴석',
+                        '운명의 돌파석': '운돌',
+                        '아비도스 융화 재료': '아비도스',
+                        // 파편 주머니는 별도 로직으로 처리하므로 매핑에서 제외하거나 무시됨
+                        '빙하의 숨결': '빙하',
+                        '용암의 숨결': '용암',
+                        '재봉술 : 업화 (기본)': '재봉술업화A',
+                        '재봉술 : 업화 (응용)': '재봉술업화B',
+                        '재봉술 : 업화 (심화)': '재봉술업화C',
+                        '야금술 : 업화 (기본)': '야금술업화A',
+                        '야금술 : 업화 (응용)': '야금술업화B',
+                        '야금술 : 업화 (심화)': '야금술업화C',
+                    };
+
+                    const shardPrices: number[] = [];
+
+                    // 🌟 LostArkMarketItemDto 구조(name, recentPrice, minPrice)에 완벽하게 맞춤
+                    apiData.forEach((item: any) => {
+                        const priceToUse = item.recentPrice > 0 ? item.recentPrice : item.minPrice;
+
+                        // 운명의 파편 주머니 (소/중/대) 처리 - 1000, 2000, 3000개 기준
+                        // 소수점 3자리까지 계산하여 저장
+                        if (item.name === '운명의 파편 주머니(소)') {
+                            shardPrices.push(Number((priceToUse / 1000).toFixed(3)));
+                        } else if (item.name === '운명의 파편 주머니(중)') {
+                            shardPrices.push(Number((priceToUse / 2000).toFixed(3)));
+                        } else if (item.name === '운명의 파편 주머니(대)') {
+                            shardPrices.push(Number((priceToUse / 3000).toFixed(3)));
+                        } else {
+                            // 일반 재료 처리
+                            const mappedName = nameMapping[item.name] || item.name;
+                            if (newPrices[mappedName] !== undefined) {
+                                // 묶음(bundle) 단위가 있는 경우 해당 단위로 나눔
+                                const bundleUnit = item.bundle > 0 ? item.bundle : 1;
+                                newPrices[mappedName] = Number((priceToUse / bundleUnit).toFixed(3));
+                            }
+                        }
+                    });
+
+                    // 파편 주머니 중 가장 저렴한 1개당 가격 적용
+                    if (shardPrices.length > 0) {
+                        newPrices['운명파편'] = Math.min(...shardPrices);
+                    }
+
+                    return newPrices;
+                });
+            } catch (error) {
+                console.error("시세 API를 불러오지 못했습니다. 설정된 기본값을 유지합니다.", error);
+            }
+        };
+
+        fetchMarketPrices();
+    }, []);
+
+    // 3. 사용자가 입력칸을 조작하면 수동으로 가격 변경
     const handlePriceChange = (name: string, newPrice: number) => {
         setPrices(prev => ({ ...prev, [name]: newPrice }));
     };
@@ -97,14 +182,13 @@ export default function GeneralReforgePage() {
             let stepCost = Number(tryCost);
 
             if (currentArtisanEnergy >= 1.0) {
-                // 🌟 버그 수정: 장기백 100% 달성 시 숨결/책 비용(addCost)을 더하지 않음!
                 actualRate = 1.0;
             } else {
                 let failureBonus = Math.min((step - 1) * 0.1 * rate, rate);
                 actualRate = rate + failureBonus + Number(addRate);
                 if (actualRate > 1.0) actualRate = 1.0;
 
-                stepCost += Number(addCost); // 🌟 장기백이 아닐 때만 추가 재료비 청구
+                stepCost += Number(addCost);
             }
 
             expectedCost += probReachingThisStep * stepCost;
@@ -115,7 +199,6 @@ export default function GeneralReforgePage() {
             let failRate = 1.0 - actualRate;
             let nextProb = probReachingThisStep * failRate;
 
-            // 장기백 누적 공식
             let aeGain = actualRate / 2.15;
             currentArtisanEnergy += aeGain;
             probReachingThisStep = nextProb;
@@ -123,52 +206,99 @@ export default function GeneralReforgePage() {
 
         return {
             expectedCost: Math.round(expectedCost),
-            expectedTries: Number(expectedTries.toFixed(2)),
+            expectedTries: Math.round(expectedTries), // 🌟 평균 시도 횟수 반올림 처리
             maxCost: Math.round((step - 1) * (Number(tryCost) + Number(addCost)) + Number(tryCost)),
             maxTries: step
         };
     };
 
-    // 🌟 4가지 모든 경우의 수(노숨, 책, 숨결, 풀숨)를 시뮬레이션하고 싼 순서대로 줄세우기
-    const combinations = useMemo(() => {
+    const combinations = useMemo<Combination[]>(() => {
         if (!currentData || materials.length === 0) return [];
 
-        const baseTryCost = materials.filter(m => !m.isBreath).reduce((sum, mat) => sum + (mat.amount * mat.price), 0);
-        // 책은 최대 사용량이 1개, 숨결은 여러 개로 구분
+        const baseMaterials = materials.filter(m => !m.isBreath);
+        const baseTryCost = baseMaterials.reduce((sum, mat) => sum + (mat.amount * mat.price), 0);
+        
         const books = materials.filter(m => m.isBreath && m.maxUse === 1);
         const breaths = materials.filter(m => m.isBreath && (m.maxUse || 0) > 1);
 
-        const results = [];
+        const results: Combination[] = [];
 
-        // 1. 노숨 (기본)
-        results.push({ name: "노숨 (기본)", tryCost: baseTryCost, isBreath: false, isBook: false, ...calculateHoningExpectation(currentData.baseProb, baseTryCost, 0, 0) });
+        // 1. 노숨
+        const baseUsage = baseMaterials.map(m => ({ name: m.name, icon: m.icon, amount: m.amount }));
+        results.push({ 
+            name: "노숨 (기본)", 
+            tryCost: Math.round(baseTryCost), 
+            isBreath: false, 
+            isBook: false, 
+            usedMaterials: baseUsage,
+            ...calculateHoningExpectation(currentData.baseProb, baseTryCost, 0, 0) 
+        });
 
         // 2. 책만 사용
         if (books.length > 0) {
             const bookProb = books[0].addedProb || 0;
             const bookCost = books[0].price;
-            results.push({ name: "책만 사용", tryCost: baseTryCost + bookCost, isBreath: false, isBook: true, ...calculateHoningExpectation(currentData.baseProb, baseTryCost, bookProb, bookCost) });
+            const bookUsage = [
+                ...baseUsage,
+                { name: books[0].name, icon: books[0].icon, amount: 1 }
+            ];
+            results.push({ 
+                name: "책만 사용", 
+                tryCost: Math.round(baseTryCost + bookCost), 
+                isBreath: false, 
+                isBook: true, 
+                usedMaterials: bookUsage,
+                ...calculateHoningExpectation(currentData.baseProb, baseTryCost, bookProb, bookCost) 
+            });
         }
 
-        // 3. 숨결만 사용
+        // 3. 숨결만 풀숨
         if (breaths.length > 0) {
             let breathProb = 0; let breathCost = 0;
-            breaths.forEach(b => { breathProb += (b.maxUse || 0) * (b.addedProb || 0); breathCost += (b.maxUse || 0) * b.price; });
-            results.push({ name: "숨결만 풀숨", tryCost: baseTryCost + breathCost, isBreath: true, isBook: false, ...calculateHoningExpectation(currentData.baseProb, baseTryCost, breathProb, breathCost) });
+            const breathUsage = [...baseUsage];
+            breaths.forEach(b => { 
+                const amount = b.maxUse || 0;
+                breathProb += amount * (b.addedProb || 0); 
+                breathCost += amount * b.price; 
+                breathUsage.push({ name: b.name, icon: b.icon, amount: amount });
+            });
+            results.push({ 
+                name: "숨결만 풀숨", 
+                tryCost: Math.round(baseTryCost + breathCost), 
+                isBreath: true, 
+                isBook: false, 
+                usedMaterials: breathUsage,
+                ...calculateHoningExpectation(currentData.baseProb, baseTryCost, breathProb, breathCost) 
+            });
         }
 
-        // 4. 풀숨 (책 + 숨결)
+        // 4. 풀숨 (책+숨결)
         if (books.length > 0 && breaths.length > 0) {
             let totalProb = books[0].addedProb || 0; let totalCost = books[0].price;
-            breaths.forEach(b => { totalProb += (b.maxUse || 0) * (b.addedProb || 0); totalCost += (b.maxUse || 0) * b.price; });
-            results.push({ name: "풀숨 (책+숨결)", tryCost: baseTryCost + totalCost, isBreath: true, isBook: true, ...calculateHoningExpectation(currentData.baseProb, baseTryCost, totalProb, totalCost) });
+            const fullUsage = [...baseUsage];
+            // 책 추가
+            fullUsage.push({ name: books[0].name, icon: books[0].icon, amount: 1 });
+            // 숨결 추가
+            breaths.forEach(b => { 
+                const amount = b.maxUse || 0;
+                totalProb += amount * (b.addedProb || 0); 
+                totalCost += amount * b.price; 
+                fullUsage.push({ name: b.name, icon: b.icon, amount: amount });
+            });
+            results.push({ 
+                name: "풀숨 (책+숨결)", 
+                tryCost: Math.round(baseTryCost + totalCost),
+                isBreath: true, 
+                isBook: true, 
+                usedMaterials: fullUsage,
+                ...calculateHoningExpectation(currentData.baseProb, baseTryCost, totalProb, totalCost) 
+            });
         }
 
-        // 기댓값(비용)이 제일 적은 순서대로 오름차순 정렬
         return results.sort((a, b) => a.expectedCost - b.expectedCost);
     }, [materials, currentData]);
 
-    const optimal = combinations[0]; // 무조건 1등(가장 싼 조합)이 최적 조합
+    const optimal = combinations[0];
 
     if (!currentData) return <div style={{ color: '#fff', textAlign: 'center', marginTop: '50px' }}>데이터를 불러올 수 없습니다.</div>;
 
@@ -206,7 +336,7 @@ export default function GeneralReforgePage() {
                         {materials.map(mat => mat.id !== '골드' && (
                             <div key={mat.id} className="price-input-row">
                                 <span className="mat-name" style={{fontSize:'13px', color:'var(--text-secondary)'}}>{mat.icon} {mat.name}</span>
-                                <input type="number" className="price-input" value={mat.price} onChange={(e) => handlePriceChange(mat.id, parseFloat(e.target.value))} />
+                                <input type="number" className="price-input" step="0.001" value={mat.price} onChange={(e) => handlePriceChange(mat.id, parseFloat(e.target.value))} />
                             </div>
                         ))}
                     </div>
@@ -236,7 +366,30 @@ export default function GeneralReforgePage() {
                                 </div>
                             </section>
 
-                            {/* 4가지 전략 순위 리스트 */}
+                            <section className="content-card">
+                                <div className="card-header"><span className="card-title">누적 재료 소모량 (최적 조합 기준)</span></div>
+                                <div className="material-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                    <div>
+                                        <div className="stat-label" style={{marginBottom: '10px', textAlign: 'center', color: '#a970ff'}}>평균 시도 ({optimal.expectedTries}회)</div>
+                                        {optimal.usedMaterials.map(mat => (
+                                            <div key={mat.name} className="material-item" style={{justifyContent: 'space-between'}}>
+                                                <span>{mat.icon} {mat.name}</span>
+                                                <span>{Math.round(mat.amount * optimal.expectedTries).toLocaleString()}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div>
+                                        <div className="stat-label" style={{marginBottom: '10px', textAlign: 'center', color: '#ffcc00'}}>장기백 ({optimal.maxTries}회)</div>
+                                        {optimal.usedMaterials.map(mat => (
+                                            <div key={mat.name} className="material-item" style={{justifyContent: 'space-between'}}>
+                                                <span>{mat.icon} {mat.name}</span>
+                                                <span>{(mat.amount * optimal.maxTries).toLocaleString()}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </section>
+
                             <section className="content-card">
                                 <div className="card-header"><span className="card-title">모든 조합 기댓값 순위</span></div>
                                 <table className="prob-table">
