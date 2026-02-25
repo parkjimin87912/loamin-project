@@ -38,13 +38,18 @@ public class MarketDataBatchConfig {
                 .tasklet((contribution, chunkContext) -> {
                     log.info(">>> 로스트아크 마켓 데이터 수집 시작");
 
-                    // [수정] searchItems 메서드 시그니처 변경에 맞춰 인자 4개 전달
-                    // (카테고리코드, 아이템명, 티어, 등급)
-                    // itemName=null, tier=null, grade=null
+                    // 1. 일반 재련 재료 (50010) 수집
                     List<LostArkMarketItemDto> items = lostArkApiService.searchItems(50010, null, null, null);
 
-                    log.info(">>> 수집된 아이템 개수: {}", items.size());
+                    // 🌟 2. 재련 보조 재료 (50020 - 책, 숨결) 수집 추가!
+                    List<LostArkMarketItemDto> subItems = lostArkApiService.searchItems(50020, null, null, null);
 
+                    // 두 리스트를 하나로 합치기
+                    items.addAll(subItems);
+
+                    log.info(">>> 수집된 총 아이템 개수: {}", items.size());
+
+                    // (DB 저장 로직이 있다면 여기서 items 리스트를 통째로 저장하시면 됩니다)
                     for (LostArkMarketItemDto item : items) {
                         log.info("아이템: {} (최저가: {} G)", item.getName(), item.getMinPrice());
                     }

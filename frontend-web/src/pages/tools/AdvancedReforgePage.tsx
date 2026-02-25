@@ -13,6 +13,8 @@ export default function AdvancedReforgePage() {
     // --- [상태 관리] ---
     const [stageRange, setStageRange] = useState("0-10");
     const [equipType, setEquipType] = useState<'armor' | 'weapon'>('armor');
+    const [isRankExpanded, setIsRankExpanded] = useState<boolean>(false);
+    const [itemIcons, setItemIcons] = useState<Record<string, string>>({}); // 🌟 아이콘 상태 추가
 
     // 🌟 API 통신용 시세 상태
     const [prices, setPrices] = useState<Record<string, number>>({
@@ -43,22 +45,32 @@ export default function AdvancedReforgePage() {
 
                 setPrices(prevPrices => {
                     const newPrices = { ...prevPrices };
+                    const newIcons: Record<string, string> = {}; // 🌟 아이콘 매핑
+
                     // 💡 API 이름 -> 아이스펭 내부 변수명 매핑 (상급 재련 책 변수명 주의!)
                     const nameMapping: Record<string, string> = {
                         '운명의 수호석': '운명의수호석', '운명의 파괴석': '운명의파괴석',
                         '운명의 돌파석': '운돌', '아비도스 융화 재료': '아비도스',
                         '빙하의 숨결': '빙하', '용암의 숨결': '용암',
-                        
-                        // T3 Books (업화)
-                        '재봉술 : 업화 (기본)': '장인의재봉술1단계', '재봉술 : 업화 (응용)': '장인의재봉술2단계',
-                        '재봉술 : 업화 (심화)': '장인의재봉술3단계', '재봉술 : 업화 (전문)': '장인의재봉술4단계',
-                        '야금술 : 업화 (기본)': '장인의야금술1단계', '야금술 : 업화 (응용)': '장인의야금술2단계',
-                        '야금술 : 업화 (심화)': '장인의야금술3단계', '야금술 : 업화 (전문)': '장인의야금술4단계',
-                        '장인의 재봉술 : 업화 (기본)': '장인의재봉술1단계', '장인의 재봉술 : 업화 (응용)': '장인의재봉술2단계',
-                        '장인의 재봉술 : 업화 (심화)': '장인의재봉술3단계', '장인의 재봉술 : 업화 (전문)': '장인의재봉술4단계',
-                        '장인의 야금술 : 업화 (기본)': '장인의야금술1단계', '장인의 야금술 : 업화 (응용)': '장인의야금술2단계',
-                        '장인의 야금술 : 업화 (심화)': '장인의야금술3단계', '장인의 야금술 : 업화 (전문)': '장인의야금술4단계',
 
+                        // 🌟 상급재련 내부 변수명과 T4 공식 이름 매핑!
+                        '재봉술 : 업화 [11-14]': '장인의재봉술1단계',
+                        '재봉술 : 업화 [15-18]': '장인의재봉술2단계',
+                        '재봉술 : 업화 [19-20]': '장인의재봉술3단계',
+
+                        '야금술 : 업화 [11-14]': '장인의야금술1단계',
+                        '야금술 : 업화 [15-18]': '장인의야금술2단계',
+                        '야금술 : 업화 [19-20]': '장인의야금술3단계',
+
+                        // 세르카(1730) 상급 재련용 책 (쇠락) 추가
+                        '재봉술 : 쇠락 [11-14]': '장인의재봉술1단계',
+                        '재봉술 : 쇠락 [15-18]': '장인의재봉술2단계',
+                        '재봉술 : 쇠락 [19-20]': '장인의재봉술3단계',
+
+                        '야금술 : 쇠락 [11-14]': '장인의야금술1단계',
+                        '야금술 : 쇠락 [15-18]': '장인의야금술2단계',
+                        '야금술 : 쇠락 [19-20]': '장인의야금술3단계',
+                        
                         // T4 Books (아비도스) - 추가됨
                         '재봉술 : 아비도스 (기본)': '장인의재봉술1단계', '재봉술 : 아비도스 (응용)': '장인의재봉술2단계',
                         '재봉술 : 아비도스 (심화)': '장인의재봉술3단계', '재봉술 : 아비도스 (전문)': '장인의재봉술4단계',
@@ -68,16 +80,32 @@ export default function AdvancedReforgePage() {
                         '장인의 재봉술 : 아비도스 (심화)': '장인의재봉술3단계', '장인의 재봉술 : 아비도스 (전문)': '장인의재봉술4단계',
                         '장인의 야금술 : 아비도스 (기본)': '장인의야금술1단계', '장인의 야금술 : 아비도스 (응용)': '장인의야금술2단계',
                         '장인의 야금술 : 아비도스 (심화)': '장인의야금술3단계', '장인의 야금술 : 아비도스 (전문)': '장인의야금술4단계',
+                        
+                        // 🌟 JSON 데이터에 있는 이름 매핑 추가
+                        '장인의 야금술 : 1단계': '장인의야금술1단계',
+                        '장인의 야금술 : 2단계': '장인의야금술2단계',
+                        '장인의 야금술 : 3단계': '장인의야금술3단계',
+                        '장인의 야금술 : 4단계': '장인의야금술4단계',
+                        '장인의 재봉술 : 1단계': '장인의재봉술1단계',
+                        '장인의 재봉술 : 2단계': '장인의재봉술2단계',
+                        '장인의 재봉술 : 3단계': '장인의재봉술3단계',
+                        '장인의 재봉술 : 4단계': '장인의재봉술4단계',
                     };
-
                     const shardPrices: number[] = [];
                     apiData.forEach((item: any) => {
                         const priceToUse = item.recentPrice > 0 ? item.recentPrice : item.minPrice;
+                        
+                        // 🌟 아이콘 매핑
+                        const mappedName = nameMapping[item.name] || item.name;
+                        if (item.icon) newIcons[mappedName] = item.icon;
+                        if (item.name.includes('운명의 파편 주머니')) {
+                            if (!newIcons['운명파편']) newIcons['운명파편'] = item.icon;
+                        }
+
                         if (item.name === '운명의 파편 주머니(소)') shardPrices.push(Number((priceToUse / 1000).toFixed(3)));
                         else if (item.name === '운명의 파편 주머니(중)') shardPrices.push(Number((priceToUse / 2000).toFixed(3)));
                         else if (item.name === '운명의 파편 주머니(대)') shardPrices.push(Number((priceToUse / 3000).toFixed(3)));
                         else {
-                            const mappedName = nameMapping[item.name] || item.name;
                             if (newPrices[mappedName] !== undefined) {
                                 const bundleUnit = item.bundle > 0 ? item.bundle : 1;
                                 newPrices[mappedName] = Number((priceToUse / bundleUnit).toFixed(3));
@@ -85,6 +113,8 @@ export default function AdvancedReforgePage() {
                         }
                     });
                     if (shardPrices.length > 0) newPrices['운명파편'] = Math.min(...shardPrices);
+                    
+                    setItemIcons(prev => ({ ...prev, ...newIcons })); // 🌟 아이콘 상태 업데이트
                     return newPrices;
                 });
             } catch (error) {
@@ -109,19 +139,26 @@ export default function AdvancedReforgePage() {
 
         // 1. 기본 재료
         Object.entries(refineTable.amount).forEach(([name, amount]) => {
-            let icon = '📦';
-            if (name.includes('수호석')) icon = '💎';
-            if (name.includes('파괴석')) icon = '🗡️';
-            if (name.includes('돌')) icon = '🔮';
-            if (name.includes('아비도스')) icon = '🟤';
-            if (name.includes('파편')) icon = '🧩';
-            if (name === '골드') icon = '💰';
+            let icon = itemIcons[name];
+            if (!icon) {
+                icon = '📦';
+                if (name.includes('수호석')) icon = '💎';
+                if (name.includes('파괴석')) icon = '🗡️';
+                if (name.includes('돌')) icon = '🔮';
+                if (name.includes('아비도스')) icon = '🟤';
+                if (name.includes('파편')) icon = '🧩';
+                if (name === '골드') icon = '💰';
+            }
             result.push({ id: name, name, icon, amount: Number(amount), price: Number(prices[name]) || 0 });
         });
 
         // 2. 숨결
         Object.entries(refineTable.breath).forEach(([name, maxUse]) => {
-            result.push({ id: name, name, icon: name.includes('빙하') ? '❄️' : '🔥', amount: Number(maxUse), price: Number(prices[name]) || 0 });
+            let icon = itemIcons[name];
+            if (!icon) {
+                icon = name.includes('빙하') ? '❄️' : '🔥';
+            }
+            result.push({ id: name, name, icon, amount: Number(maxUse), price: Number(prices[name]) || 0 });
         });
 
         // 3. 책
@@ -140,10 +177,13 @@ export default function AdvancedReforgePage() {
                 else if (refineTable.book.includes('4단계')) bookName = '장인의 재봉술 : 4단계';
             }
             
-            result.push({ id: refineTable.book, name: bookName, icon: '📜', amount: 1, price: Number(prices[refineTable.book]) || 0 });
+            let icon = itemIcons[refineTable.book];
+            if (!icon) icon = '📜';
+
+            result.push({ id: refineTable.book, name: bookName, icon, amount: 1, price: Number(prices[refineTable.book]) || 0 });
         }
         return result;
-    }, [refineTable, prices]);
+    }, [refineTable, prices, itemIcons]);
 
     // 🌟 DP 시뮬레이션 엔진 가동 (모든 경우의 수 계산)
     const reports = useMemo(() => {
@@ -195,7 +235,10 @@ export default function AdvancedReforgePage() {
                     <div className="material-list">
                         {materialsList.map(mat => (
                             <div key={mat.id} className="material-item">
-                                <span className="mat-name">{mat.icon} {mat.name}</span>
+                                <div style={{display:'flex', alignItems:'center'}}>
+                                    {mat.icon.startsWith('http') ? <img src={mat.icon} alt={mat.name} style={{width:'20px', height:'20px', marginRight:'6px', borderRadius:'4px', objectFit:'contain'}} /> : <span style={{marginRight:'6px'}}>{mat.icon}</span>}
+                                    <span className="mat-name">{mat.name}</span>
+                                </div>
                                 <span className="mat-qty">{mat.amount.toLocaleString()}</span>
                             </div>
                         ))}
@@ -205,7 +248,10 @@ export default function AdvancedReforgePage() {
                     <div>
                         {materialsList.map(mat => mat.id !== '골드' && (
                             <div key={mat.id} className="price-input-row">
-                                <span className="mat-name" style={{fontSize:'13px', color:'var(--text-secondary)'}}>{mat.icon} {mat.name}</span>
+                                <div style={{display:'flex', alignItems:'center'}}>
+                                    {mat.icon.startsWith('http') ? <img src={mat.icon} alt={mat.name} style={{width:'16px', height:'16px', marginRight:'6px', objectFit:'contain'}} /> : <span style={{marginRight:'6px', fontSize:'13px'}}>{mat.icon}</span>}
+                                    <span className="mat-name" style={{fontSize:'13px', color:'var(--text-secondary)'}}>{mat.name}</span>
+                                </div>
                                 <input type="number" step="0.001" className="price-input" value={mat.price} onChange={(e) => handlePriceChange(mat.id, parseFloat(e.target.value))} />
                             </div>
                         ))}
@@ -241,10 +287,49 @@ export default function AdvancedReforgePage() {
                                     </div>
                                     {refineTable.hasEnhancedBonus && (
                                         <div className="stat-box" style={{background: 'rgba(244, 67, 54, 0.1)', border: '1px solid rgba(244, 67, 54, 0.3)'}}>
-                                            <div className="stat-label" style={{color: '#f44336'}}>일식 발동 시</div>
+                                            <div className="stat-label" style={{color: '#f44336'}}>강화 선조 발동 시</div>
                                             <div className="stat-value" style={{fontSize: '15px'}}>{formatStrategy(bestCombo.enhancedBonusBreathNames)}</div>
                                         </div>
                                     )}
+                                </div>
+                            </section>
+
+                            <section className="content-card">
+                                <div className="card-header"><span className="card-title">예상 재료 소모량 (1위 전략 기준)</span></div>
+                                <div className="material-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                    {bestCombo.expectedMaterials.map((mat, idx) => {
+                                        // 아이콘 매핑
+                                        let iconUrl = itemIcons[mat.name];
+                                        
+                                        // fallback (이미지 없을 경우)
+                                        if (!iconUrl) {
+                                            if (mat.name.includes('수호석')) iconUrl = 'https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_7_55.png';
+                                            else if (mat.name.includes('파괴석')) iconUrl = 'https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_7_54.png';
+                                            else if (mat.name.includes('돌')) iconUrl = 'https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_11_101.png';
+                                            else if (mat.name.includes('아비도스')) iconUrl = 'https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_11_102.png';
+                                            else if (mat.name.includes('파편')) iconUrl = 'https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_6_109.png';
+                                            else if (mat.name === '골드') iconUrl = 'https://cdn-lostark.game.onstove.com/efui_iconatlas/money/money_4.png';
+                                            else if (mat.name.includes('빙하')) iconUrl = 'https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_3_232.png';
+                                            else if (mat.name.includes('용암')) iconUrl = 'https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_3_233.png';
+                                            else if (mat.name.includes('재봉술')) iconUrl = 'https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_9_44.png';
+                                            else if (mat.name.includes('야금술')) iconUrl = 'https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_9_34.png';
+                                        }
+
+                                        // 이름 매핑 (화면에 보여줄 때만)
+                                        let displayName = mat.name;
+                                        if (mat.name.includes('장인의재봉술')) displayName = mat.name.replace('장인의재봉술', '장인의 재봉술 : ');
+                                        if (mat.name.includes('장인의야금술')) displayName = mat.name.replace('장인의야금술', '장인의 야금술 : ');
+
+                                        return (
+                                            <div key={idx} className="material-item" style={{justifyContent: 'space-between'}}>
+                                                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                                    {iconUrl ? <img src={iconUrl} alt={mat.name} style={{width: '24px', height: '24px', objectFit: 'contain'}} /> : <span>📦</span>}
+                                                    <span>{displayName}</span>
+                                                </div>
+                                                <span>{Math.round(mat.amount).toLocaleString()}</span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </section>
 
@@ -257,24 +342,57 @@ export default function AdvancedReforgePage() {
                                             <th>순위</th>
                                             <th>일반 턴</th>
                                             <th>선조 턴</th>
-                                            {refineTable.hasEnhancedBonus && <th style={{color:'#f44336'}}>일식 턴</th>}
+                                            {refineTable.hasEnhancedBonus && <th style={{color:'#f44336'}}>강화 선조 턴</th>}
                                             <th>평균 누르는 횟수</th>
                                             <th>기댓값 (골드)</th>
                                         </tr>
                                         </thead>
                                         <tbody>
-                                        {reports.slice(0, 30).map((combo, idx) => (
-                                            <tr key={idx} style={{ backgroundColor: idx === 0 ? 'rgba(169, 112, 255, 0.1)' : 'transparent' }}>
-                                                <td style={{ fontWeight:'bold', color: idx === 0 ? '#a970ff' : '#aaa' }}>{idx + 1}위</td>
-                                                <td style={{ fontWeight: idx === 0 ? 'bold' : 'normal', color: idx === 0 ? '#fff' : 'var(--text-secondary)' }}>{formatStrategy(combo.normalBreathNames)}</td>
-                                                <td style={{ fontWeight: idx === 0 ? 'bold' : 'normal', color: idx === 0 ? '#ffcc00' : 'var(--text-secondary)' }}>{formatStrategy(combo.bonusBreathNames)}</td>
-                                                {refineTable.hasEnhancedBonus && <td style={{ fontWeight: idx === 0 ? 'bold' : 'normal', color: idx === 0 ? '#f44336' : 'var(--text-secondary)' }}>{formatStrategy(combo.enhancedBonusBreathNames)}</td>}
-                                                <td>{combo.expectedTryCount.toFixed(2)}회</td>
-                                                <td style={{ fontWeight:'bold', color: idx === 0 ? '#fff' : '#ccc' }}>{Math.round(combo.expectedPrice).toLocaleString()} G</td>
-                                            </tr>
-                                        ))}
+                                        {(() => {
+                                            const totalReports = reports.length;
+                                            const showAll = isRankExpanded || totalReports <= 6;
+                                            
+                                            const renderRow = (combo: any, idx: number) => (
+                                                <tr key={idx} style={{ backgroundColor: idx === 0 ? 'rgba(169, 112, 255, 0.1)' : 'transparent' }}>
+                                                    <td style={{ fontWeight:'bold', color: idx === 0 ? '#a970ff' : '#aaa' }}>{idx + 1}위</td>
+                                                    <td style={{ fontWeight: idx === 0 ? 'bold' : 'normal', color: idx === 0 ? '#fff' : 'var(--text-secondary)' }}>{formatStrategy(combo.normalBreathNames)}</td>
+                                                    <td style={{ fontWeight: idx === 0 ? 'bold' : 'normal', color: idx === 0 ? '#ffcc00' : 'var(--text-secondary)' }}>{formatStrategy(combo.bonusBreathNames)}</td>
+                                                    {refineTable.hasEnhancedBonus && <td style={{ fontWeight: idx === 0 ? 'bold' : 'normal', color: idx === 0 ? '#f44336' : 'var(--text-secondary)' }}>{formatStrategy(combo.enhancedBonusBreathNames)}</td>}
+                                                    <td>{combo.expectedTryCount.toFixed(2)}회</td>
+                                                    <td style={{ fontWeight:'bold', color: idx === 0 ? '#fff' : '#ccc' }}>{Math.round(combo.expectedPrice).toLocaleString()} G</td>
+                                                </tr>
+                                            );
+
+                                            if (showAll) {
+                                                return reports.slice(0, 30).map(renderRow);
+                                            }
+
+                                            const firstFive = reports.slice(0, 5);
+                                            const last = reports[totalReports - 1];
+                                            const hiddenCount = totalReports - 6;
+
+                                            return (
+                                                <>
+                                                    {firstFive.map(renderRow)}
+                                                    <tr>
+                                                        <td colSpan={refineTable.hasEnhancedBonus ? 6 : 5} 
+                                                            onClick={() => setIsRankExpanded(true)} 
+                                                            style={{ textAlign: 'center', padding: '12px', color: '#a970ff', cursor: 'pointer', fontWeight: 'bold' }}
+                                                        >
+                                                            ... {hiddenCount}개 전략 더보기 ...
+                                                        </td>
+                                                    </tr>
+                                                    {renderRow(last, totalReports - 1)}
+                                                </>
+                                            );
+                                        })()}
                                         </tbody>
                                     </table>
+                                    {isRankExpanded && reports.length > 6 && (
+                                        <div onClick={() => setIsRankExpanded(false)} style={{ textAlign: 'center', padding: '12px', color: '#aaa', cursor: 'pointer', borderTop: '1px solid #333', fontSize: '13px' }}>
+                                            접기 ▲
+                                        </div>
+                                    )}
                                 </div>
                                 <div style={{textAlign: 'center', marginTop: '10px', fontSize: '12px', color: '#666'}}>
                                     * 상위 30개의 조합만 표시됩니다.

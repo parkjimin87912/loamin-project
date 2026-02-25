@@ -179,6 +179,21 @@ export function getReport(
                                 }),
                             ];
 
+                            // 🌟 책 소모량 계산 로직 추가
+                            if (book) {
+                                const bookAmount =
+                                    (normalBook ? (data.freeNormalTry + data.paidNormalTry) : 0) +
+                                    (bonusBook ? data.bonusTry : 0) +
+                                    (enhancedBonusBook ? data.enhancedBonusTry : 0);
+                                
+                                if (bookAmount > 0) {
+                                    expectedMaterials.push({
+                                        name: book.name,
+                                        amount: bookAmount
+                                    });
+                                }
+                            }
+
                             const expectedPrice =
                                 paidNormalPrice * data.paidNormalTry +
                                 freeNormalPrice * data.freeNormalTry +

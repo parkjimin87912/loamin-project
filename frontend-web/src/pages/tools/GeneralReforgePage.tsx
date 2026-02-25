@@ -35,6 +35,8 @@ export default function GeneralReforgePage() {
     const [selectedComboName, setSelectedComboName] = useState<string>("");
     const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
     const [isTableExpanded, setIsTableExpanded] = useState<boolean>(false);
+    const [isRankExpanded, setIsRankExpanded] = useState<boolean>(false);
+    const [itemIcons, setItemIcons] = useState<Record<string, string>>({}); // 🌟 아이콘 상태 추가
 
     const currentData = refineData[equipType][gearType]?.[targetLevel];
 
@@ -46,29 +48,63 @@ export default function GeneralReforgePage() {
         '운명의수호석결정': 0.1, '운명의파괴석결정': 0.3, '위운돌': 50, '상급아비도스': 150,
     });
 
+    // 🌟 2. 페이지에 처음 들어왔을 때 백엔드에서 실시간 시세 불러오기
     useEffect(() => {
         const fetchMarketPrices = async () => {
             try {
-                const response = await axios.get('http://localhost:8080/api/v1/market/items?tier=4');
-                const apiData = response.data;
+                // 💡 중요: 재련 재료(50010)와 보조 재료(50020)를 모두 가져오도록 Promise.all 사용!
+                const [matResponse, subMatResponse] = await Promise.all([
+                    axios.get('http://localhost:8080/api/v1/market/items', {
+                        params: { category: 'reforge', subCategory: '재련 재료', tier: 4 }
+                    }),
+                    axios.get('http://localhost:8080/api/v1/market/items', {
+                        params: { category: 'reforge', subCategory: '재련 보조 재료', tier: 4 }
+                    })
+                ]);
+
+                // 두 API 결과를 하나로 합칩니다.
+                const apiData = [
+                    ...(Array.isArray(matResponse.data) ? matResponse.data : []),
+                    ...(Array.isArray(subMatResponse.data) ? subMatResponse.data : [])
+                ];
+
                 setPrices(prevPrices => {
                     const newPrices = { ...prevPrices };
+                    const newIcons: Record<string, string> = {}; // 🌟 아이콘 매핑
+
+                    // 🌟 공식 이름 매핑으로 교체 완료!
                     const nameMapping: Record<string, string> = {
                         '운명의 수호석': '운명의수호석', '운명의 파괴석': '운명의파괴석', '운명의 돌파석': '운돌',
                         '아비도스 융화 재료': '아비도스', '빙하의 숨결': '빙하', '용암의 숨결': '용암',
-                        '재봉술 : 업화 (기본)': '재봉술업화A', '재봉술 : 업화 (응용)': '재봉술업화B', '재봉술 : 업화 (심화)': '재봉술업화C',
-                        '야금술 : 업화 (기본)': '야금술업화A', '야금술 : 업화 (응용)': '야금술업화B', '야금술 : 업화 (심화)': '야금술업화C',
+
+                        '재봉술 : 업화 [11-14]': '재봉술업화A',
+                        '재봉술 : 업화 [15-18]': '재봉술업화B',
+                        '재봉술 : 업화 [19-20]': '재봉술업화C',
+
+                        '야금술 : 업화 [11-14]': '야금술업화A',
+                        '야금술 : 업화 [15-18]': '야금술업화B',
+                        '야금술 : 업화 [19-20]': '야금술업화C',
+
                         '운명의 수호석 결정': '운명의수호석결정', '운명의 파괴석 결정': '운명의파괴석결정',
                         '위대한 운명의 돌파석': '위운돌', '아비도스 융화 재료(상급)': '상급아비도스',
+                        '상급 아비도스 융화 재료': '상급아비도스', // 🌟 추가 매핑
                     };
+
                     const shardPrices: number[] = [];
                     apiData.forEach((item: any) => {
                         const priceToUse = item.recentPrice > 0 ? item.recentPrice : item.minPrice;
+                        
+                        // 🌟 아이콘 매핑
+                        const mappedName = nameMapping[item.name] || item.name;
+                        if (item.icon) newIcons[mappedName] = item.icon;
+                        if (item.name.includes('운명의 파편 주머니')) {
+                            if (!newIcons['운명파편']) newIcons['운명파편'] = item.icon;
+                        }
+
                         if (item.name === '운명의 파편 주머니(소)') shardPrices.push(Number((priceToUse / 1000).toFixed(3)));
                         else if (item.name === '운명의 파편 주머니(중)') shardPrices.push(Number((priceToUse / 2000).toFixed(3)));
                         else if (item.name === '운명의 파편 주머니(대)') shardPrices.push(Number((priceToUse / 3000).toFixed(3)));
                         else {
-                            const mappedName = nameMapping[item.name] || item.name;
                             if (newPrices[mappedName] !== undefined) {
                                 const bundleUnit = item.bundle > 0 ? item.bundle : 1;
                                 newPrices[mappedName] = Number((priceToUse / bundleUnit).toFixed(3));
@@ -76,6 +112,8 @@ export default function GeneralReforgePage() {
                         }
                     });
                     if (shardPrices.length > 0) newPrices['운명파편'] = Math.min(...shardPrices);
+                    
+                    setItemIcons(prev => ({ ...prev, ...newIcons })); // 🌟 아이콘 상태 업데이트
                     return newPrices;
                 });
             } catch (error) {
@@ -93,23 +131,33 @@ export default function GeneralReforgePage() {
         if (!currentData) return [];
         const result: Material[] = [];
         Object.entries(currentData.amount).forEach(([name, amount]) => {
-            let icon = '📦';
-            if (name.includes('수호석')) icon = '💎';
-            if (name.includes('파괴석')) icon = '🗡️';
-            if (name.includes('돌')) icon = '🔮';
-            if (name.includes('아비도스')) icon = '🟤';
-            if (name.includes('파편')) icon = '🧩';
-            if (name === '골드') icon = '💰';
+            let icon = itemIcons[name];
+            if (!icon) {
+                // 🌟 이미지 URL 하드코딩 (Fallback)
+                if (name === '골드') icon = 'https://cdn-lostark.game.onstove.com/efui_iconatlas/money/money_4.png';
+                else if (name.includes('수호석')) icon = 'https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_7_55.png';
+                else if (name.includes('파괴석')) icon = 'https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_7_54.png';
+                else if (name.includes('돌')) icon = 'https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_11_101.png';
+                else if (name === '아비도스') icon = 'https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_11_102.png';
+                else if (name === '상급아비도스') icon = 'https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_13_252.png'; // 🌟 상급 아비도스 URL 수정
+                else if (name.includes('파편')) icon = 'https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_6_109.png';
+                else icon = '📦';
+            }
             result.push({ id: name, name, icon, amount: Number(amount), price: Number(prices[name]) || 0 });
         });
         if (currentData.breath) {
             Object.entries(currentData.breath).forEach(([name, [maxUse, addedProb]]) => {
-                let icon = name.includes('빙하') || name.includes('용암') ? '❄️' : '📜';
+                let icon = itemIcons[name];
+                if (!icon) {
+                    if (name.includes('빙하')) icon = 'https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_3_232.png';
+                    else if (name.includes('용암')) icon = 'https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_3_233.png';
+                    else icon = '📜';
+                }
                 result.push({ id: name, name, icon, amount: 0, price: Number(prices[name]) || 0, isBreath: true, maxUse: Number(maxUse), addedProb: Number(addedProb) });
             });
         }
         return result;
-    }, [currentData, prices]);
+    }, [currentData, prices, itemIcons]);
 
     // ==========================================
     // 🌟 DP(동적 계획법) 기반 시뮬레이터 엔진
@@ -291,6 +339,31 @@ export default function GeneralReforgePage() {
 
     const currentCombo = combinations.find(c => c.name === selectedComboName) || optimal;
 
+    // 🌟 이름 변환 헬퍼 함수
+    const getDisplayName = (name: string) => {
+        const nameMap: Record<string, string> = {
+            '재봉술업화A': '재봉술 : 업화 [11-14]',
+            '재봉술업화B': '재봉술 : 업화 [15-18]',
+            '재봉술업화C': '재봉술 : 업화 [19-20]',
+            '야금술업화A': '야금술 : 업화 [11-14]',
+            '야금술업화B': '야금술 : 업화 [15-18]',
+            '야금술업화C': '야금술 : 업화 [19-20]',
+            '운명의수호석': '운명의 수호석',
+            '운명의파괴석': '운명의 파괴석',
+            '운돌': '운명의 돌파석',
+            '아비도스': '아비도스 융화 재료',
+            '상급아비도스': '상급 아비도스 융화 재료',
+            '운명파편': '운명의 파편',
+            '빙하': '빙하의 숨결',
+            '용암': '용암의 숨결',
+            '운명의수호석결정': '운명의 수호석 결정',
+            '운명의파괴석결정': '운명의 파괴석 결정',
+            '위운돌': '위대한 운명의 돌파석',
+            '골드': '골드'
+        };
+        return nameMap[name] || name;
+    };
+
     if (!currentData) return <div style={{ color: '#fff', textAlign: 'center', marginTop: '50px' }}>데이터를 불러올 수 없습니다.</div>;
 
     return (
@@ -324,7 +397,10 @@ export default function GeneralReforgePage() {
                     <div className="material-list">
                         {materials.filter(m => !m.isBreath).map(mat => (
                             <div key={mat.id} className="material-item">
-                                <span className="mat-name">{mat.icon} {mat.name}</span>
+                                <div style={{display:'flex', alignItems:'center'}}>
+                                    {mat.icon.startsWith('http') ? <img src={mat.icon} alt={mat.name} style={{width:'20px', height:'20px', marginRight:'6px', borderRadius:'4px', objectFit:'contain'}} /> : <span style={{marginRight:'6px'}}>{mat.icon}</span>}
+                                    <span className="mat-name">{getDisplayName(mat.name)}</span>
+                                </div>
                                 <span className="mat-qty">{mat.amount.toLocaleString()}</span>
                             </div>
                         ))}
@@ -334,7 +410,10 @@ export default function GeneralReforgePage() {
                     <div>
                         {materials.map(mat => mat.id !== '골드' && (
                             <div key={mat.id} className="price-input-row">
-                                <span className="mat-name" style={{fontSize:'13px', color:'var(--text-secondary)'}}>{mat.icon} {mat.name}</span>
+                                <div style={{display:'flex', alignItems:'center'}}>
+                                    {mat.icon.startsWith('http') ? <img src={mat.icon} alt={mat.name} style={{width:'16px', height:'16px', marginRight:'6px', objectFit:'contain'}} /> : <span style={{marginRight:'6px', fontSize:'13px'}}>{mat.icon}</span>}
+                                    <span className="mat-name" style={{fontSize:'13px', color:'var(--text-secondary)'}}>{getDisplayName(mat.name)}</span>
+                                </div>
                                 <input type="number" className="price-input" step="0.001" value={mat.price} onChange={(e) => handlePriceChange(mat.id, parseFloat(e.target.value))} />
                             </div>
                         ))}
@@ -373,7 +452,10 @@ export default function GeneralReforgePage() {
                                         <div className="stat-label" style={{marginBottom: '10px', textAlign: 'center', color: '#a970ff'}}>평균 시도 (약 {currentCombo.expectedTries}회)</div>
                                         {currentCombo.usedMaterials.map(mat => (
                                             <div key={mat.name} className="material-item" style={{justifyContent: 'space-between'}}>
-                                                <span>{mat.icon} {mat.name}</span>
+                                                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                                    {mat.icon.startsWith('http') ? <img src={mat.icon} alt={mat.name} style={{width: '24px', height: '24px', objectFit: 'contain'}} /> : <span>{mat.icon}</span>}
+                                                    <span>{getDisplayName(mat.name)}</span>
+                                                </div>
                                                 <span>{Math.round(mat.expectedAmount).toLocaleString()}</span>
                                             </div>
                                         ))}
@@ -382,7 +464,10 @@ export default function GeneralReforgePage() {
                                         <div className="stat-label" style={{marginBottom: '10px', textAlign: 'center', color: '#ffcc00'}}>장기백 ({currentCombo.maxTries}회)</div>
                                         {currentCombo.usedMaterials.map(mat => (
                                             <div key={mat.name} className="material-item" style={{justifyContent: 'space-between'}}>
-                                                <span>{mat.icon} {mat.name}</span>
+                                                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                                    {mat.icon.startsWith('http') ? <img src={mat.icon} alt={mat.name} style={{width: '24px', height: '24px', objectFit: 'contain'}} /> : <span>{mat.icon}</span>}
+                                                    <span>{getDisplayName(mat.name)}</span>
+                                                </div>
                                                 <span>{Math.round(mat.maxAmount).toLocaleString()}</span>
                                             </div>
                                         ))}
