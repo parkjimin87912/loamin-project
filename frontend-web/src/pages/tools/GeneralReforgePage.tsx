@@ -1,165 +1,90 @@
-import { useState, useMemo, useEffect } from 'react'; // 🌟 useEffect 추가
-import axios from 'axios'; // 🌟 axios 추가 (API 요청용)
+import { useState, useMemo, useEffect } from 'react';
+import axios from 'axios';
 import ToolsHeader from '../../components/ToolsHeader';
-// 파일명이 다르면 맞춰주세요!
 import { refineData } from '../../data/refineData.ts';
 import '../../App.css';
 
 interface Material {
-    id: string;
-    name: string;
-    icon: string;
-    amount: number;
-    price: number;
-    isBreath?: boolean;
-    addedProb?: number;
-    maxUse?: number;
+    id: string; name: string; icon: string; amount: number; price: number;
+    isBreath?: boolean; addedProb?: number; maxUse?: number;
 }
 
 interface HoningStep {
-    step: number;
-    baseProb: number; // 기본 + 실패 보정
-    bookProb: number;
-    breathProb: number;
-    totalProb: number;
-    cumulativeProb: number; // 누적 성공 확률
-    artisanEnergy: number;
-    stepCost: number;
-    cumulativeCost: number;
-}
-
-interface HoningResult {
-    expectedCost: number;
-    expectedTries: number;
-    maxCost: number;
-    maxTries: number;
-    steps: HoningStep[];
+    step: number; baseProb: number; bookProb: number; breathProb: number;
+    totalProb: number; cumulativeProb: number; artisanEnergy: number;
+    stepCost: number; cumulativeCost: number; actionId: string; // 🌟 추가: 해당 스텝의 액션 이름
 }
 
 interface MaterialUsage {
-    name: string;
-    icon: string;
-    amount: number;
+    name: string; icon: string; expectedAmount: number; maxAmount: number; // 🌟 예상 소모량과 최대 소모량 분리
 }
 
-interface Combination extends HoningResult {
-    name: string;
-    tryCost: number;
-    isBreath: boolean;
-    isBook: boolean;
+interface Combination {
+    name: string; desc: string; tryCost: number;
+    expectedCost: number; expectedTries: number;
+    maxCost: number; maxTries: number;
+    steps: HoningStep[];
     usedMaterials: MaterialUsage[];
 }
 
 export default function GeneralReforgePage() {
     const [equipType, setEquipType] = useState<'armor' | 'weapon'>('armor');
-    const [gearType, setGearType] = useState<'t4_1590' | 't4_1730'>('t4_1590'); // 🌟 장비 등급 (에기르/세르카)
+    const [gearType, setGearType] = useState<'t4_1590' | 't4_1730'>('t4_1590');
     const [targetLevel, setTargetLevel] = useState<number>(11);
-    
-    // UI 상태 관리
+
     const [selectedComboName, setSelectedComboName] = useState<string>("");
     const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
     const [isTableExpanded, setIsTableExpanded] = useState<boolean>(false);
 
-    // 🌟 선택된 장비 등급에 따라 데이터 가져오기
     const currentData = refineData[equipType][gearType]?.[targetLevel];
 
-    // 1. 초기 기본값 설정 (API 호출 실패 시나 로딩 중에 보일 기본 시세)
     const [prices, setPrices] = useState<Record<string, number>>({
-        '운명의수호석': 0.06,
-        '운명의파괴석': 0.15,
-        '운돌': 25,
-        '아비도스': 85,
-        '운명파편': 0.1,
-        '골드': 1,
-        '빙하': 260,
-        '용암': 300,
-        '재봉술업화A': 500,
-        '재봉술업화B': 800,
-        '재봉술업화C': 1200,
-        '야금술업화A': 600,
-        '야금술업화B': 1000,
-        '야금술업화C': 1500,
-        // 세르카(1730) 재료 추가
-        '운명의수호석결정': 0.1,
-        '운명의파괴석결정': 0.3,
-        '위운돌': 50,
-        '상급아비도스': 150,
+        '운명의수호석': 0.06, '운명의파괴석': 0.15, '운돌': 25, '아비도스': 85,
+        '운명파편': 0.1, '골드': 1, '빙하': 260, '용암': 300,
+        '재봉술업화A': 500, '재봉술업화B': 800, '재봉술업화C': 1200,
+        '야금술업화A': 600, '야금술업화B': 1000, '야금술업화C': 1500,
+        '운명의수호석결정': 0.1, '운명의파괴석결정': 0.3, '위운돌': 50, '상급아비도스': 150,
     });
 
-    // 🌟 2. 페이지에 처음 들어왔을 때 백엔드에서 실시간 시세 불러오기
     useEffect(() => {
         const fetchMarketPrices = async () => {
             try {
-                // 💡 중요: 컨트롤러 기본값이 tier 3이므로, T4 재료를 가져오기 위해 ?tier=4 추가!
                 const response = await axios.get('http://localhost:8080/api/v1/market/items?tier=4');
                 const apiData = response.data;
-
                 setPrices(prevPrices => {
                     const newPrices = { ...prevPrices };
-                    
-                    // API 응답 이름 -> 내부 state key 매핑
                     const nameMapping: Record<string, string> = {
-                        '운명의 수호석': '운명의수호석',
-                        '운명의 파괴석': '운명의파괴석',
-                        '운명의 돌파석': '운돌',
-                        '아비도스 융화 재료': '아비도스',
-                        // 파편 주머니는 별도 로직으로 처리하므로 매핑에서 제외하거나 무시됨
-                        '빙하의 숨결': '빙하',
-                        '용암의 숨결': '용암',
-                        '재봉술 : 업화 (기본)': '재봉술업화A',
-                        '재봉술 : 업화 (응용)': '재봉술업화B',
-                        '재봉술 : 업화 (심화)': '재봉술업화C',
-                        '야금술 : 업화 (기본)': '야금술업화A',
-                        '야금술 : 업화 (응용)': '야금술업화B',
-                        '야금술 : 업화 (심화)': '야금술업화C',
-                        // 세르카 재료 매핑
-                        '운명의 수호석 결정': '운명의수호석결정',
-                        '운명의 파괴석 결정': '운명의파괴석결정',
-                        '위대한 운명의 돌파석': '위운돌',
-                        '아비도스 융화 재료(상급)': '상급아비도스', // API 명칭 확인 필요 (임시)
+                        '운명의 수호석': '운명의수호석', '운명의 파괴석': '운명의파괴석', '운명의 돌파석': '운돌',
+                        '아비도스 융화 재료': '아비도스', '빙하의 숨결': '빙하', '용암의 숨결': '용암',
+                        '재봉술 : 업화 (기본)': '재봉술업화A', '재봉술 : 업화 (응용)': '재봉술업화B', '재봉술 : 업화 (심화)': '재봉술업화C',
+                        '야금술 : 업화 (기본)': '야금술업화A', '야금술 : 업화 (응용)': '야금술업화B', '야금술 : 업화 (심화)': '야금술업화C',
+                        '운명의 수호석 결정': '운명의수호석결정', '운명의 파괴석 결정': '운명의파괴석결정',
+                        '위대한 운명의 돌파석': '위운돌', '아비도스 융화 재료(상급)': '상급아비도스',
                     };
-
                     const shardPrices: number[] = [];
-
-                    // 🌟 LostArkMarketItemDto 구조(name, recentPrice, minPrice)에 완벽하게 맞춤
                     apiData.forEach((item: any) => {
                         const priceToUse = item.recentPrice > 0 ? item.recentPrice : item.minPrice;
-
-                        // 운명의 파편 주머니 (소/중/대) 처리 - 1000, 2000, 3000개 기준
-                        // 소수점 3자리까지 계산하여 저장
-                        if (item.name === '운명의 파편 주머니(소)') {
-                            shardPrices.push(Number((priceToUse / 1000).toFixed(3)));
-                        } else if (item.name === '운명의 파편 주머니(중)') {
-                            shardPrices.push(Number((priceToUse / 2000).toFixed(3)));
-                        } else if (item.name === '운명의 파편 주머니(대)') {
-                            shardPrices.push(Number((priceToUse / 3000).toFixed(3)));
-                        } else {
-                            // 일반 재료 처리
+                        if (item.name === '운명의 파편 주머니(소)') shardPrices.push(Number((priceToUse / 1000).toFixed(3)));
+                        else if (item.name === '운명의 파편 주머니(중)') shardPrices.push(Number((priceToUse / 2000).toFixed(3)));
+                        else if (item.name === '운명의 파편 주머니(대)') shardPrices.push(Number((priceToUse / 3000).toFixed(3)));
+                        else {
                             const mappedName = nameMapping[item.name] || item.name;
                             if (newPrices[mappedName] !== undefined) {
-                                // 묶음(bundle) 단위가 있는 경우 해당 단위로 나눔
                                 const bundleUnit = item.bundle > 0 ? item.bundle : 1;
                                 newPrices[mappedName] = Number((priceToUse / bundleUnit).toFixed(3));
                             }
                         }
                     });
-
-                    // 파편 주머니 중 가장 저렴한 1개당 가격 적용
-                    if (shardPrices.length > 0) {
-                        newPrices['운명파편'] = Math.min(...shardPrices);
-                    }
-
+                    if (shardPrices.length > 0) newPrices['운명파편'] = Math.min(...shardPrices);
                     return newPrices;
                 });
             } catch (error) {
-                console.error("시세 API를 불러오지 못했습니다. 설정된 기본값을 유지합니다.", error);
+                console.error("시세 API를 불러오지 못했습니다.", error);
             }
         };
-
         fetchMarketPrices();
     }, []);
 
-    // 3. 사용자가 입력칸을 조작하면 수동으로 가격 변경
     const handlePriceChange = (name: string, newPrice: number) => {
         setPrices(prev => ({ ...prev, [name]: newPrice }));
     };
@@ -167,7 +92,6 @@ export default function GeneralReforgePage() {
     const materials = useMemo<Material[]>(() => {
         if (!currentData) return [];
         const result: Material[] = [];
-
         Object.entries(currentData.amount).forEach(([name, amount]) => {
             let icon = '📦';
             if (name.includes('수호석')) icon = '💎';
@@ -176,196 +100,192 @@ export default function GeneralReforgePage() {
             if (name.includes('아비도스')) icon = '🟤';
             if (name.includes('파편')) icon = '🧩';
             if (name === '골드') icon = '💰';
-
-            result.push({
-                id: name, name, icon, amount: Number(amount), price: Number(prices[name]) || 0
-            });
+            result.push({ id: name, name, icon, amount: Number(amount), price: Number(prices[name]) || 0 });
         });
-
         if (currentData.breath) {
             Object.entries(currentData.breath).forEach(([name, [maxUse, addedProb]]) => {
-                let icon = '📜';
-                if (name.includes('빙하') || name.includes('용암')) icon = '❄️';
-                result.push({
-                    id: name, name, icon, amount: 0, price: Number(prices[name]) || 0,
-                    isBreath: true, maxUse: Number(maxUse), addedProb: Number(addedProb)
-                });
+                let icon = name.includes('빙하') || name.includes('용암') ? '❄️' : '📜';
+                result.push({ id: name, name, icon, amount: 0, price: Number(prices[name]) || 0, isBreath: true, maxUse: Number(maxUse), addedProb: Number(addedProb) });
             });
         }
         return result;
     }, [currentData, prices]);
 
     // ==========================================
-    // 🧮 완벽하게 수정된 로스트아크 장기백 엔진
+    // 🌟 DP(동적 계획법) 기반 시뮬레이터 엔진
     // ==========================================
-    const calculateHoningExpectation = (
-        baseRate: number, 
-        tryCost: number, 
-        bookProb: number = 0, 
-        bookCost: number = 0,
-        breathProb: number = 0, 
-        breathCost: number = 0
-    ): HoningResult => {
-        let expectedCost = 0;
-        let expectedTries = 0;
-        let currentArtisanEnergy = 0;
-        let probReachingThisStep = 1.0;
-        let step = 0;
-        const rate = Number(baseRate);
-        const steps: HoningStep[] = [];
-        let cumulativeCost = 0;
-        let cumulativeFailProb = 1.0;
-
-        while (probReachingThisStep > 0.0000001) {
-            step++;
-            let actualRate = 0;
-            let stepCost = Number(tryCost);
-            let currentBaseProb = rate;
-
-            if (currentArtisanEnergy >= 1.0) {
-                actualRate = 1.0;
-                currentBaseProb = 1.0; // 장기백 시 기본확률 100% 취급
-            } else {
-                let failureBonus = Math.min((step - 1) * 0.1 * rate, rate);
-                currentBaseProb = rate + failureBonus;
-                actualRate = currentBaseProb + Number(bookProb) + Number(breathProb);
-                if (actualRate > 1.0) actualRate = 1.0;
-
-                stepCost += Number(bookCost) + Number(breathCost);
-            }
-
-            cumulativeCost += stepCost;
-            cumulativeFailProb *= (1 - actualRate);
-            const cumulativeSuccessProb = 1 - cumulativeFailProb;
-
-            steps.push({
-                step,
-                baseProb: currentBaseProb,
-                bookProb: currentArtisanEnergy >= 1.0 ? 0 : bookProb,
-                breathProb: currentArtisanEnergy >= 1.0 ? 0 : breathProb,
-                totalProb: actualRate,
-                cumulativeProb: cumulativeSuccessProb,
-                artisanEnergy: currentArtisanEnergy,
-                stepCost: stepCost,
-                cumulativeCost: cumulativeCost
-            });
-
-            expectedCost += probReachingThisStep * stepCost;
-            expectedTries += probReachingThisStep * 1;
-
-            if (actualRate >= 1.0) break;
-
-            let failRate = 1.0 - actualRate;
-            let nextProb = probReachingThisStep * failRate;
-
-            let aeGain = actualRate / 2.15;
-            currentArtisanEnergy += aeGain;
-            probReachingThisStep = nextProb;
-        }
-
-        return {
-            expectedCost: Math.round(expectedCost),
-            expectedTries: Math.round(expectedTries),
-            maxCost: Math.round(cumulativeCost),
-            maxTries: step,
-            steps
-        };
-    };
-
     const combinations = useMemo<Combination[]>(() => {
         if (!currentData || materials.length === 0) return [];
 
         const baseMaterials = materials.filter(m => !m.isBreath);
         const baseTryCost = baseMaterials.reduce((sum, mat) => sum + (mat.amount * mat.price), 0);
-        
+
         const books = materials.filter(m => m.isBreath && m.maxUse === 1);
         const breaths = materials.filter(m => m.isBreath && (m.maxUse || 0) > 1);
 
-        const results: Combination[] = [];
+        let bookProb = 0; let bookCost = 0; let bookName = ""; let bookIcon = "";
+        if (books.length > 0) { bookProb = books[0].addedProb || 0; bookCost = books[0].price; bookName = books[0].name; bookIcon = books[0].icon; }
 
-        // 1. 노숨
-        const baseUsage = baseMaterials.map(m => ({ name: m.name, icon: m.icon, amount: m.amount }));
-        results.push({ 
-            name: "노숨 (기본)", 
-            tryCost: Math.round(baseTryCost), 
-            isBreath: false, 
-            isBook: false, 
-            usedMaterials: baseUsage,
-            ...calculateHoningExpectation(currentData.baseProb, baseTryCost, 0, 0, 0, 0) 
-        });
-
-        // 2. 책만 사용
-        if (books.length > 0) {
-            const bookProb = books[0].addedProb || 0;
-            const bookCost = books[0].price;
-            const bookUsage = [
-                ...baseUsage,
-                { name: books[0].name, icon: books[0].icon, amount: 1 }
-            ];
-            results.push({ 
-                name: "책만 사용", 
-                tryCost: Math.round(baseTryCost + bookCost), 
-                isBreath: false, 
-                isBook: true, 
-                usedMaterials: bookUsage,
-                ...calculateHoningExpectation(currentData.baseProb, baseTryCost, bookProb, bookCost, 0, 0) 
-            });
-        }
-
-        // 3. 숨결만 풀숨
+        let breathProb = 0; let breathCost = 0; let breathMaxUse = 0; let breathName = ""; let breathIcon = "";
         if (breaths.length > 0) {
-            let breathProb = 0; let breathCost = 0;
-            const breathUsage = [...baseUsage];
-            breaths.forEach(b => { 
-                const amount = b.maxUse || 0;
-                breathProb += amount * (b.addedProb || 0); 
-                breathCost += amount * b.price; 
-                breathUsage.push({ name: b.name, icon: b.icon, amount: amount });
-            });
-            results.push({ 
-                name: "숨결만 풀숨", 
-                tryCost: Math.round(baseTryCost + breathCost), 
-                isBreath: true, 
-                isBook: false, 
-                usedMaterials: breathUsage,
-                ...calculateHoningExpectation(currentData.baseProb, baseTryCost, 0, 0, breathProb, breathCost) 
-            });
+            breaths.forEach(b => { breathProb += (b.maxUse || 0) * (b.addedProb || 0); breathCost += (b.maxUse || 0) * b.price; breathMaxUse = b.maxUse || 0; breathName = b.name; breathIcon = b.icon; });
         }
 
-        // 4. 풀숨 (책+숨결)
-        if (books.length > 0 && breaths.length > 0) {
-            let totalProb = books[0].addedProb || 0; let totalCost = books[0].price;
-            let breathProb = 0; let breathCost = 0;
-            const fullUsage = [...baseUsage];
-            // 책 추가
-            fullUsage.push({ name: books[0].name, icon: books[0].icon, amount: 1 });
-            // 숨결 추가
-            breaths.forEach(b => { 
-                const amount = b.maxUse || 0;
-                breathProb += amount * (b.addedProb || 0); 
-                breathCost += amount * b.price; 
-                fullUsage.push({ name: b.name, icon: b.icon, amount: amount });
-            });
-            results.push({ 
-                name: "풀숨 (책+숨결)", 
-                tryCost: Math.round(baseTryCost + totalCost + breathCost), 
-                isBreath: true, 
-                isBook: true, 
-                usedMaterials: fullUsage,
-                ...calculateHoningExpectation(currentData.baseProb, baseTryCost, totalProb, totalCost, breathProb, breathCost) 
-            });
-        }
+        const dpActions = [
+            { id: "노숨", book: 0, bookC: 0, breath: 0, breathC: 0 },
+            { id: "책", book: bookProb, bookC: bookCost, breath: 0, breathC: 0 },
+            { id: "숨결", book: 0, bookC: 0, breath: breathProb, breathC: breathCost },
+            { id: "풀숨", book: bookProb, bookC: bookCost, breath: breathProb, breathC: breathCost }
+        ].filter(a => !(a.book === 0 && a.breath === 0 && a.id !== "노숨" && (a.bookC > 0 || a.breathC > 0))); // 의미없는 액션 제거
+
+        // 1. DP 최적화 배열 채우기
+        const memo = new Map<string, any>();
+        const dp = (step: number, artisan: number): any => {
+            if (artisan >= 1.0) return { expectedCost: 0, expectedTries: 0, maxCost: 0 };
+            const key = `${step}_${artisan.toFixed(6)}`;
+            if (memo.has(key)) return memo.get(key);
+
+            let rateBase = currentData.baseProb + Math.min(step * 0.1 * currentData.baseProb, currentData.baseProb);
+            let minExpectedCost = Infinity; let bestExpectedTries = 0; let bestMaxCost = 0; let bestAction = dpActions[0];
+
+            for (const action of dpActions) {
+                let actualRate = Math.min(rateBase + action.book + action.breath, 1.0);
+                let stepCost = baseTryCost + action.bookC + action.breathC;
+
+                if (actualRate >= 1.0) {
+                    if (stepCost < minExpectedCost) {
+                        minExpectedCost = stepCost; bestExpectedTries = 1; bestMaxCost = stepCost; bestAction = action;
+                    }
+                    continue;
+                }
+
+                let failRate = 1.0 - actualRate;
+                let nextArtisan = artisan + (actualRate / 2.15);
+                let nextState = dp(step + 1, nextArtisan);
+                let currentExpectedCost = stepCost + (failRate * nextState.expectedCost);
+
+                if (currentExpectedCost < minExpectedCost) {
+                    minExpectedCost = currentExpectedCost; bestExpectedTries = 1 + (failRate * nextState.expectedTries);
+                    bestMaxCost = stepCost + nextState.maxCost; bestAction = action;
+                }
+            }
+            const result = { expectedCost: minExpectedCost, expectedTries: bestExpectedTries, maxCost: bestMaxCost, bestAction };
+            memo.set(key, result); return result;
+        };
+        dp(0, 0);
+
+        // 2. 전략을 시뮬레이션하여 데이터 추출하는 함수 (DP 결과 또는 고정 매크로)
+        const simulateStrategy = (name: string, isDynamic: boolean, fixedActionId: string = "노숨"): Combination => {
+            let expectedCost = 0; let expectedTries = 0; let currentArtisanEnergy = 0;
+            let probReachingThisStep = 1.0; let step = 0; let cumulativeCost = 0; let cumulativeFailProb = 1.0;
+            const steps: HoningStep[] = [];
+
+            // 재료 소모량 추적 (예상치, 최대치)
+            const matUsage: Record<string, { expected: number, max: number }> = {};
+            baseMaterials.forEach(m => matUsage[m.name] = { expected: 0, max: 0 });
+            if (bookName) matUsage[bookName] = { expected: 0, max: 0 };
+            if (breathName) matUsage[breathName] = { expected: 0, max: 0 };
+
+            const path: string[] = [];
+
+            while (probReachingThisStep > 0.0000001) {
+                const action = isDynamic
+                    ? (currentArtisanEnergy >= 1.0 ? dpActions[0] : memo.get(`${step}_${currentArtisanEnergy.toFixed(6)}`)?.bestAction || dpActions[0])
+                    : dpActions.find(a => a.id === fixedActionId) || dpActions[0];
+
+                path.push(action.id);
+                step++;
+
+                let currentBaseProb = currentData.baseProb + Math.min((step - 1) * 0.1 * currentData.baseProb, currentData.baseProb);
+                let actualRate = 0; let stepCost = baseTryCost;
+
+                if (currentArtisanEnergy >= 1.0) {
+                    actualRate = 1.0; currentBaseProb = 1.0;
+                } else {
+                    actualRate = Math.min(currentBaseProb + action.book + action.breath, 1.0);
+                    stepCost += action.bookC + action.breathC;
+                }
+
+                cumulativeCost += stepCost;
+                cumulativeFailProb *= (1 - actualRate);
+                const cumulativeSuccessProb = 1 - cumulativeFailProb;
+
+                // 소모량 추적 (DP를 위해 각 스텝마다의 확률적 누적치 계산)
+                baseMaterials.forEach(m => {
+                    matUsage[m.name].expected += probReachingThisStep * m.amount;
+                    matUsage[m.name].max += m.amount;
+                });
+                if (bookName && action.book > 0 && currentArtisanEnergy < 1.0) {
+                    matUsage[bookName].expected += probReachingThisStep * 1;
+                    matUsage[bookName].max += 1;
+                }
+                if (breathName && action.breath > 0 && currentArtisanEnergy < 1.0) {
+                    matUsage[breathName].expected += probReachingThisStep * breathMaxUse;
+                    matUsage[breathName].max += breathMaxUse;
+                }
+
+                steps.push({
+                    step, baseProb: currentBaseProb, actionId: action.id,
+                    bookProb: currentArtisanEnergy >= 1.0 ? 0 : action.book,
+                    breathProb: currentArtisanEnergy >= 1.0 ? 0 : action.breath,
+                    totalProb: actualRate, cumulativeProb: cumulativeSuccessProb,
+                    artisanEnergy: currentArtisanEnergy, stepCost, cumulativeCost
+                });
+
+                expectedCost += probReachingThisStep * stepCost;
+                expectedTries += probReachingThisStep * 1;
+
+                if (actualRate >= 1.0) break;
+
+                currentArtisanEnergy += actualRate / 2.15;
+                probReachingThisStep *= (1.0 - actualRate);
+            }
+
+            // 전략 이름 압축 로직 (1~2회 풀숨 ➔ 이후 노숨)
+            let desc = "전구간 " + fixedActionId;
+            if (isDynamic) {
+                const pathSegments = []; let currentAction = path[0]; let count = 0; let startIdx = 1;
+                for (let i = 0; i < path.length; i++) {
+                    if (path[i] === currentAction) count++;
+                    else {
+                        pathSegments.push(`${startIdx}~${startIdx + count - 1}회 ${currentAction}`);
+                        currentAction = path[i]; startIdx = i + 1; count = 1;
+                    }
+                }
+                if (count > 0) pathSegments.push(startIdx === 1 ? `전구간 ${currentAction}` : `이후 ${currentAction}`);
+                desc = pathSegments.join(" ➔ ");
+            }
+
+            // MaterialUsage 배열화
+            const usedMaterials: MaterialUsage[] = [];
+            baseMaterials.forEach(m => usedMaterials.push({ name: m.name, icon: m.icon, expectedAmount: matUsage[m.name].expected, maxAmount: matUsage[m.name].max }));
+            if (bookName && matUsage[bookName].max > 0) usedMaterials.push({ name: bookName, icon: bookIcon, expectedAmount: matUsage[bookName].expected, maxAmount: matUsage[bookName].max });
+            if (breathName && matUsage[breathName].max > 0) usedMaterials.push({ name: breathName, icon: breathIcon, expectedAmount: matUsage[breathName].expected, maxAmount: matUsage[breathName].max });
+
+            return {
+                name, desc, tryCost: baseTryCost,
+                expectedCost: Math.round(expectedCost), expectedTries: Math.round(expectedTries), // 🌟 반올림 적용
+                maxCost: Math.round(cumulativeCost), maxTries: step,
+                steps, usedMaterials
+            };
+        };
+
+        const results: Combination[] = [];
+        results.push(simulateStrategy("노숨 (기본)", false, "노숨"));
+        if (books.length > 0) results.push(simulateStrategy("책만 사용", false, "책"));
+        if (breaths.length > 0) results.push(simulateStrategy("숨결만 풀숨", false, "숨결"));
+        if (books.length > 0 && breaths.length > 0) results.push(simulateStrategy("풀숨 (책+숨결)", false, "풀숨"));
+        results.push(simulateStrategy("✨ 스마트 혼합 전략", true));
 
         return results.sort((a, b) => a.expectedCost - b.expectedCost);
     }, [materials, currentData]);
 
     const optimal = combinations[0];
-    
-    // 최적 조합이 변경되면 선택된 콤보 이름도 업데이트
+
     useEffect(() => {
         if (optimal) {
             setSelectedComboName(optimal.name);
-            setIsTableExpanded(false); // 콤보 변경 시 테이블 접기
+            setIsTableExpanded(false);
         }
     }, [optimal]);
 
@@ -379,9 +299,7 @@ export default function GeneralReforgePage() {
             <div className="reforge-container">
                 <aside className="sidebar-card">
                     <div className="sidebar-title">재련 설정</div>
-                    <p className="sidebar-desc">
-                        {gearType === 't4_1590' ? 'T4 에기르 (1590)' : 'T4 세르카 (1730)'} 장비 기준 데이터입니다.
-                    </p>
+                    <p className="sidebar-desc">{gearType === 't4_1590' ? 'T4 에기르 (1590)' : 'T4 세르카 (1730)'} 장비 기준 오피셜 데이터입니다.</p>
 
                     <div className="type-selector">
                         <button className={`type-btn ${gearType === 't4_1590' ? 'active' : ''}`} onClick={() => { setGearType('t4_1590'); setTargetLevel(11); }}>에기르 (1590)</button>
@@ -396,7 +314,7 @@ export default function GeneralReforgePage() {
                     <select className="custom-select" value={targetLevel} onChange={(e) => setTargetLevel(Number(e.target.value))}>
                         {Array.from({ length: 15 }, (_, i) => i + 11).map(level => (
                             <option key={level} value={level}>
-                                {level - 1} → {level}강 
+                                {level - 1} → {level}강
                                 {refineData[equipType][gearType]?.[level] ? ` (기본 ${Math.round(refineData[equipType][gearType][level].baseProb * 100)}%)` : ''}
                             </option>
                         ))}
@@ -432,6 +350,7 @@ export default function GeneralReforgePage() {
                                 </div>
                                 <div className="card-header" style={{ marginTop: '10px' }}>
                                     <span className="card-title">{optimal.name}</span>
+                                    <span style={{ fontSize: '13px', color: '#4caf50', marginLeft: '10px', fontWeight: 'bold' }}>{optimal.desc}</span>
                                 </div>
                                 <div className="optimal-grid">
                                     <div className="stat-box">
@@ -448,23 +367,23 @@ export default function GeneralReforgePage() {
                             </section>
 
                             <section className="content-card">
-                                <div className="card-header"><span className="card-title">누적 재료 소모량 (최적 조합 기준)</span></div>
+                                <div className="card-header"><span className="card-title">누적 재료 소모량 ({selectedComboName} 기준)</span></div>
                                 <div className="material-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                                     <div>
-                                        <div className="stat-label" style={{marginBottom: '10px', textAlign: 'center', color: '#a970ff'}}>평균 시도 ({optimal.expectedTries}회)</div>
-                                        {optimal.usedMaterials.map(mat => (
+                                        <div className="stat-label" style={{marginBottom: '10px', textAlign: 'center', color: '#a970ff'}}>평균 시도 (약 {currentCombo.expectedTries}회)</div>
+                                        {currentCombo.usedMaterials.map(mat => (
                                             <div key={mat.name} className="material-item" style={{justifyContent: 'space-between'}}>
                                                 <span>{mat.icon} {mat.name}</span>
-                                                <span>{Math.round(mat.amount * optimal.expectedTries).toLocaleString()}</span>
+                                                <span>{Math.round(mat.expectedAmount).toLocaleString()}</span>
                                             </div>
                                         ))}
                                     </div>
                                     <div>
-                                        <div className="stat-label" style={{marginBottom: '10px', textAlign: 'center', color: '#ffcc00'}}>장기백 ({optimal.maxTries}회)</div>
-                                        {optimal.usedMaterials.map(mat => (
+                                        <div className="stat-label" style={{marginBottom: '10px', textAlign: 'center', color: '#ffcc00'}}>장기백 ({currentCombo.maxTries}회)</div>
+                                        {currentCombo.usedMaterials.map(mat => (
                                             <div key={mat.name} className="material-item" style={{justifyContent: 'space-between'}}>
                                                 <span>{mat.icon} {mat.name}</span>
-                                                <span>{(mat.amount * optimal.maxTries).toLocaleString()}</span>
+                                                <span>{Math.round(mat.maxAmount).toLocaleString()}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -474,45 +393,30 @@ export default function GeneralReforgePage() {
                             <section className="content-card">
                                 <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                                     <span className="card-title">상세 확률표</span>
-                                    
+
                                     <div className="dropdown-container" style={{ position: 'relative', zIndex: 10 }}>
-                                        <button 
-                                            className="type-btn" 
+                                        <button
+                                            className="type-btn"
                                             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                            style={{ minWidth: '160px', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', fontSize: '13px' }}
+                                            style={{ minWidth: '180px', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', fontSize: '13px' }}
                                         >
                                             <span>{selectedComboName}</span>
                                             <span style={{fontSize: '10px', marginLeft: '8px'}}>▼</span>
                                         </button>
                                         {isDropdownOpen && (
-                                            <div className="dropdown-list" style={{ 
-                                                position: 'absolute', 
-                                                top: '100%', 
-                                                right: 0, 
-                                                width: '200px',
-                                                background: '#2a2a2a', 
-                                                border: '1px solid #444', 
-                                                borderRadius: '8px', 
-                                                marginTop: '4px',
-                                                boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-                                                overflow: 'hidden'
+                                            <div className="dropdown-list" style={{
+                                                position: 'absolute', top: '100%', right: 0, width: '220px',
+                                                background: '#2a2a2a', border: '1px solid #444', borderRadius: '8px',
+                                                marginTop: '4px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)', overflow: 'hidden'
                                             }}>
                                                 {combinations.map(combo => (
-                                                    <div 
-                                                        key={combo.name} 
-                                                        className="dropdown-item" 
-                                                        onClick={() => {
-                                                            setSelectedComboName(combo.name);
-                                                            setIsDropdownOpen(false);
-                                                            setIsTableExpanded(false);
-                                                        }}
-                                                        style={{ 
-                                                            padding: '12px 16px', 
-                                                            cursor: 'pointer',
-                                                            borderBottom: '1px solid #333',
+                                                    <div
+                                                        key={combo.name}
+                                                        onClick={() => { setSelectedComboName(combo.name); setIsDropdownOpen(false); setIsTableExpanded(false); }}
+                                                        style={{
+                                                            padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid #333',
                                                             backgroundColor: selectedComboName === combo.name ? '#3a3a3a' : 'transparent',
-                                                            color: selectedComboName === combo.name ? '#a970ff' : '#fff',
-                                                            fontSize: '13px'
+                                                            color: selectedComboName === combo.name ? '#a970ff' : '#fff', fontSize: '13px'
                                                         }}
                                                     >
                                                         {combo.name}
@@ -535,14 +439,12 @@ export default function GeneralReforgePage() {
                                                 <div className="stat-value">{currentCombo.maxTries}회</div>
                                             </div>
                                             <div className="stat-box">
-                                                <div className="stat-label">평균 비용</div>
+                                                <div className="stat-label">평균 기댓값 비용</div>
                                                 <div className="stat-value">{currentCombo.expectedCost.toLocaleString()} G</div>
                                             </div>
                                             <div className="stat-box">
-                                                <div className="stat-label">추가 재료</div>
-                                                <div className="stat-value" style={{fontSize: '12px'}}>
-                                                    {currentCombo.isBook ? '책 O' : '책 X'} / {currentCombo.isBreath ? '숨결 O' : '숨결 X'}
-                                                </div>
+                                                <div className="stat-label">적용된 전략 요약</div>
+                                                <div className="stat-value" style={{fontSize: '12px', color: '#4caf50'}}>{currentCombo.desc}</div>
                                             </div>
                                         </div>
 
@@ -551,95 +453,75 @@ export default function GeneralReforgePage() {
                                                 <thead>
                                                 <tr>
                                                     <th>시도</th>
+                                                    <th>적용 방법</th>
                                                     <th>기본 확률</th>
                                                     <th>책 보너스</th>
                                                     <th>숨결 보너스</th>
                                                     <th>시도 확률</th>
-                                                    <th>누적 성공</th>
-                                                    <th>장기</th>
-                                                    <th>예상 비용 (누적)</th>
+                                                    <th>장기백 누적</th>
+                                                    <th>누적 성공률</th>
                                                 </tr>
                                                 </thead>
                                                 <tbody>
                                                 {(() => {
                                                     const steps = currentCombo.steps;
                                                     const totalSteps = steps.length;
-                                                    
-                                                    // 펼쳐졌거나 전체 스텝이 6개 이하라면 모두 보여줌
+
                                                     if (isTableExpanded || totalSteps <= 6) {
                                                         return steps.map(step => (
                                                             <tr key={step.step} style={{ backgroundColor: step.totalProb >= 1.0 ? 'rgba(255, 204, 0, 0.1)' : 'transparent' }}>
                                                                 <td>{step.step}</td>
+                                                                <td style={{fontWeight: 'bold', color: step.actionId !== '노숨' ? '#a970ff' : 'inherit'}}>{step.actionId}</td>
                                                                 <td>{(step.baseProb * 100).toFixed(2)}%</td>
-                                                                <td style={{color: step.bookProb > 0 ? '#a970ff' : 'inherit'}}>{(step.bookProb * 100).toFixed(2)}%</td>
-                                                                <td style={{color: step.breathProb > 0 ? '#a970ff' : 'inherit'}}>{(step.breathProb * 100).toFixed(2)}%</td>
-                                                                <td style={{fontWeight: 'bold'}}>{(step.totalProb * 100).toFixed(2)}%</td>
-                                                                <td>{(step.cumulativeProb * 100).toFixed(2)}%</td>
+                                                                <td style={{color: step.bookProb > 0 ? '#a970ff' : '#555'}}>{(step.bookProb * 100).toFixed(2)}%</td>
+                                                                <td style={{color: step.breathProb > 0 ? '#a970ff' : '#555'}}>{(step.breathProb * 100).toFixed(2)}%</td>
+                                                                <td style={{fontWeight: 'bold', color: '#fff'}}>{(step.totalProb * 100).toFixed(2)}%</td>
                                                                 <td>{(step.artisanEnergy * 100).toFixed(2)}%</td>
-                                                                <td>{Math.round(step.cumulativeCost).toLocaleString()} G</td>
+                                                                <td>{(step.cumulativeProb * 100).toFixed(2)}%</td>
                                                             </tr>
                                                         ));
                                                     }
-                                                    
-                                                    // 접혀있고 7개 이상인 경우: 1~5, 더보기, 마지막
+
                                                     const firstFive = steps.slice(0, 5);
                                                     const lastStep = steps[totalSteps - 1];
-                                                    const hiddenCount = totalSteps - 6; // 5개 + 1개 제외한 나머지
-                                                    
+                                                    const hiddenCount = totalSteps - 6;
+
                                                     return (
                                                         <>
                                                             {firstFive.map(step => (
                                                                 <tr key={step.step} style={{ backgroundColor: step.totalProb >= 1.0 ? 'rgba(255, 204, 0, 0.1)' : 'transparent' }}>
                                                                     <td>{step.step}</td>
+                                                                    <td style={{fontWeight: 'bold', color: step.actionId !== '노숨' ? '#a970ff' : 'inherit'}}>{step.actionId}</td>
                                                                     <td>{(step.baseProb * 100).toFixed(2)}%</td>
-                                                                    <td style={{color: step.bookProb > 0 ? '#a970ff' : 'inherit'}}>{(step.bookProb * 100).toFixed(2)}%</td>
-                                                                    <td style={{color: step.breathProb > 0 ? '#a970ff' : 'inherit'}}>{(step.breathProb * 100).toFixed(2)}%</td>
-                                                                    <td style={{fontWeight: 'bold'}}>{(step.totalProb * 100).toFixed(2)}%</td>
-                                                                    <td>{(step.cumulativeProb * 100).toFixed(2)}%</td>
+                                                                    <td style={{color: step.bookProb > 0 ? '#a970ff' : '#555'}}>{(step.bookProb * 100).toFixed(2)}%</td>
+                                                                    <td style={{color: step.breathProb > 0 ? '#a970ff' : '#555'}}>{(step.breathProb * 100).toFixed(2)}%</td>
+                                                                    <td style={{fontWeight: 'bold', color: '#fff'}}>{(step.totalProb * 100).toFixed(2)}%</td>
                                                                     <td>{(step.artisanEnergy * 100).toFixed(2)}%</td>
-                                                                    <td>{Math.round(step.cumulativeCost).toLocaleString()} G</td>
+                                                                    <td>{(step.cumulativeProb * 100).toFixed(2)}%</td>
                                                                 </tr>
                                                             ))}
-                                                            
                                                             <tr>
-                                                                <td colSpan={8} 
-                                                                    onClick={() => setIsTableExpanded(true)}
-                                                                    style={{ textAlign: 'center', padding: '12px', color: '#a970ff', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', borderTop: '1px solid #333', borderBottom: '1px solid #333' }}
-                                                                >
+                                                                <td colSpan={8} onClick={() => setIsTableExpanded(true)} style={{ textAlign: 'center', padding: '12px', color: '#a970ff', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', borderTop: '1px solid #333', borderBottom: '1px solid #333' }}>
                                                                     ... {hiddenCount}개 구간 더보기 (클릭) ...
                                                                 </td>
                                                             </tr>
-                                                            
                                                             <tr key={lastStep.step} style={{ backgroundColor: lastStep.totalProb >= 1.0 ? 'rgba(255, 204, 0, 0.1)' : 'transparent' }}>
                                                                 <td>{lastStep.step}</td>
+                                                                <td style={{fontWeight: 'bold', color: lastStep.actionId !== '노숨' ? '#a970ff' : 'inherit'}}>{lastStep.actionId}</td>
                                                                 <td>{(lastStep.baseProb * 100).toFixed(2)}%</td>
-                                                                <td style={{color: lastStep.bookProb > 0 ? '#a970ff' : 'inherit'}}>{(lastStep.bookProb * 100).toFixed(2)}%</td>
-                                                                <td style={{color: lastStep.breathProb > 0 ? '#a970ff' : 'inherit'}}>{(lastStep.breathProb * 100).toFixed(2)}%</td>
-                                                                <td style={{fontWeight: 'bold'}}>{(lastStep.totalProb * 100).toFixed(2)}%</td>
-                                                                <td>{(lastStep.cumulativeProb * 100).toFixed(2)}%</td>
+                                                                <td style={{color: lastStep.bookProb > 0 ? '#a970ff' : '#555'}}>{(lastStep.bookProb * 100).toFixed(2)}%</td>
+                                                                <td style={{color: lastStep.breathProb > 0 ? '#a970ff' : '#555'}}>{(lastStep.breathProb * 100).toFixed(2)}%</td>
+                                                                <td style={{fontWeight: 'bold', color: '#fff'}}>{(lastStep.totalProb * 100).toFixed(2)}%</td>
                                                                 <td>{(lastStep.artisanEnergy * 100).toFixed(2)}%</td>
-                                                                <td>{Math.round(lastStep.cumulativeCost).toLocaleString()} G</td>
+                                                                <td>{(lastStep.cumulativeProb * 100).toFixed(2)}%</td>
                                                             </tr>
                                                         </>
                                                     );
                                                 })()}
                                                 </tbody>
                                             </table>
-                                            
                                             {isTableExpanded && (
-                                                <div 
-                                                    onClick={() => setIsTableExpanded(false)}
-                                                    style={{
-                                                        textAlign: 'center',
-                                                        padding: '12px',
-                                                        color: '#aaa',
-                                                        cursor: 'pointer',
-                                                        borderTop: '1px solid #333',
-                                                        fontSize: '13px'
-                                                    }}
-                                                >
-                                                    접기 ▲
-                                                </div>
+                                                <div onClick={() => setIsTableExpanded(false)} style={{textAlign: 'center', padding: '12px', color: '#aaa', cursor: 'pointer', borderTop: '1px solid #333', fontSize: '13px'}}>접기 ▲</div>
                                             )}
                                         </div>
                                     </>
