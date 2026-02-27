@@ -95,7 +95,7 @@ interface Skill {
     runeName: string;
     runeIcon: string;
     runeGrade: string;
-    tooltip: string; // 🌟 툴팁 필드 추가
+    tooltip: string;
 }
 
 interface ArkPassivePoint {
@@ -103,7 +103,7 @@ interface ArkPassivePoint {
     value: number;
     rank: number;
     level: number;
-    tooltip: string; // 🌟 툴팁 필드 추가
+    tooltip: string;
 }
 
 interface ArkPassive {
@@ -125,9 +125,9 @@ interface ArkGrid {
     effectName: string;
     point: number;
     icon: string;
-    grade: string; // 🌟 등급 필드 추가
-    tooltip: string; // 🌟 툴팁 필드 추가
-    gems?: { // 🌟 gems 필드 추가
+    grade: string;
+    tooltip: string;
+    gems?: {
         index: number;
         icon: string;
         isActive: boolean;
@@ -136,20 +136,20 @@ interface ArkGrid {
     }[];
 }
 
-interface ArkGridEffect { // 🌟 아크 그리드 효과 인터페이스 추가
+interface ArkGridEffect {
     name: string;
     level: number;
     tooltip: string;
 }
 
-interface CharacterSummary { // 🌟 원정대 캐릭터 요약 정보 인터페이스 추가
+interface CharacterSummary {
     serverName: string;
     characterName: string;
     characterLevel: number;
     characterClassName: string;
     itemAvgLevel: string;
     itemMaxLevel: string;
-    characterImage?: string; // 🌟 캐릭터 이미지 추가
+    characterImage?: string;
 }
 
 interface CharacterInfo {
@@ -160,6 +160,7 @@ interface CharacterInfo {
     itemAvgLevel: string;
     itemMaxLevel: string;
     combatPower?: string;
+    CombatPower?: string;
     characterImage: string;
     guildName: string;
     title: string;
@@ -173,26 +174,24 @@ interface CharacterInfo {
     arkPassive?: ArkPassive;
     t4Engravings?: T4Engraving[];
     arkGrids?: ArkGrid[];
-    arkGridEffects?: ArkGridEffect[]; // 🌟 아크 그리드 효과 리스트 추가
-    siblings?: CharacterSummary[]; // 🌟 원정대 캐릭터 목록 추가
+    arkGridEffects?: ArkGridEffect[];
+    siblings?: CharacterSummary[];
 }
 
-// 🌟 직업 이미지 URL 가져오는 함수 (외부로 이동)
 const getClassImage = (className: string) => {
     const engName = CLASS_IMAGE_MAP[className];
     if (!engName) return '';
     return `https://cdn-lostark.game.onstove.com/2018/obt/assets/images/common/thumb/${engName}.png`;
 };
 
-// 🌟 캐릭터 카드 컴포넌트 분리
 const CharacterCard = ({ sibling, onClick }: { sibling: CharacterSummary, onClick: (name: string) => void }) => {
     const [imageError, setImageError] = useState(false);
     const hasImage = !!sibling.characterImage;
 
     return (
-        <div 
-             onClick={() => onClick(sibling.characterName)}
-             style={{
+        <div
+            onClick={() => onClick(sibling.characterName)}
+            style={{
                 position: 'relative',
                 height: '400px',
                 borderRadius: '12px',
@@ -202,20 +201,20 @@ const CharacterCard = ({ sibling, onClick }: { sibling: CharacterSummary, onClic
                 transition: 'transform 0.2s, box-shadow 0.2s',
                 background: 'var(--bg-card)',
                 boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
-             }}
-             onMouseEnter={(e) => {
-                 e.currentTarget.style.transform = 'translateY(-5px)';
-                 e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.5)';
-                 e.currentTarget.style.borderColor = 'var(--primary-color)';
-             }}
-             onMouseLeave={(e) => {
-                 e.currentTarget.style.transform = 'none';
-                 e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.3)';
-                 e.currentTarget.style.borderColor = 'var(--border-color)';
-             }}
+            }}
+            onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-5px)';
+                e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.5)';
+                e.currentTarget.style.borderColor = 'var(--primary-color)';
+            }}
+            onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'none';
+                e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.3)';
+                e.currentTarget.style.borderColor = 'var(--border-color)';
+            }}
         >
             {hasImage && !imageError ? (
-                <img 
+                <img
                     src={sibling.characterImage}
                     alt={sibling.characterName}
                     style={{
@@ -256,26 +255,26 @@ const CharacterCard = ({ sibling, onClick }: { sibling: CharacterSummary, onClic
             }}>
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                     <span style={{
-                        fontSize: '11px', 
-                        background: 'var(--primary-color)', 
-                        padding: '2px 6px', 
-                        borderRadius: '4px', 
+                        fontSize: '11px',
+                        background: 'var(--primary-color)',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
                         color: '#fff',
                         fontWeight: 'bold'
                     }}>{sibling.serverName}</span>
                     <span style={{fontSize: '12px', color: '#ccc'}}>Lv.{sibling.characterLevel}</span>
                 </div>
-                
+
                 <div style={{
-                    fontSize: '20px', 
-                    fontWeight: 'bold', 
-                    color: '#fff', 
+                    fontSize: '20px',
+                    fontWeight: 'bold',
+                    color: '#fff',
                     margin: '4px 0',
                     textShadow: '0 2px 4px rgba(0,0,0,0.8)'
                 }}>
                     {sibling.characterName}
                 </div>
-                
+
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px'}}>
                     <span style={{fontSize: '13px', color: '#ddd'}}>{sibling.characterClassName}</span>
                     <span style={{fontSize: '15px', fontWeight: 'bold', color: '#ffb74d'}}>
@@ -559,6 +558,7 @@ export default function CharacterSearchPage() {
             let options: string[] = [];
             let mainStat = "";
             let abilityEngravings: { name: string, level: number, isPenalty: boolean }[] = [];
+            let advancedReforge = 0; // 🌟 상급 재련 추가
 
             const stripHtml = (html: string) => html.replace(/<BR>|<br>/gi, '\n').replace(/<[^>]*>/g, '').trim();
 
@@ -654,6 +654,14 @@ export default function CharacterSearchPage() {
                         const match = cleanText.match(regex);
                         if (match && !mainStat) mainStat = `${stat} +${match[1]}`;
                     });
+
+                    // 🌟 상급 재련 추출 로직 추가
+                    if (cleanText.includes("상급 재련")) {
+                        const advMatch = cleanText.match(/상급\s*재련[^0-9]*(\d+)\s*단계/);
+                        if (advMatch) {
+                            advancedReforge = Math.max(advancedReforge, parseInt(advMatch[1], 10));
+                        }
+                    }
                 }
                 if (typeof obj === 'object') Object.values(obj).forEach(child => traverse(child));
             };
@@ -667,9 +675,9 @@ export default function CharacterSearchPage() {
             );
             options = [...new Set(options)];
 
-            return {quality, options, mainStat, abilityEngravings};
+            return {quality, options, mainStat, abilityEngravings, advancedReforge}; // 🌟 반환값에 추가
         } catch {
-            return {quality: -1, options: [], mainStat: "", abilityEngravings: []};
+            return {quality: -1, options: [], mainStat: "", abilityEngravings: [], advancedReforge: 0};
         }
     };
 
@@ -682,12 +690,10 @@ export default function CharacterSearchPage() {
                 if (!obj) return;
 
                 if (obj.type === "SingleTextBox" && obj.value) {
-                    // 🌟 텍스트 정제 로직 개선
                     let text = obj.value.replace(/<BR>|<br>/gi, ' | ');
-                    text = text.replace(/<[^>]*>/g, ' '); // 태그를 공백으로 치환하여 단어 붙음 방지
-                    text = text.replace(/\s+/g, ' ').trim(); // 연속된 공백 제거
+                    text = text.replace(/<[^>]*>/g, ' ');
+                    text = text.replace(/\s+/g, ' ').trim();
 
-                    // 정규식으로 각 속성 추출
                     const staggerMatch = text.match(/무력화\s*:\s*(최상|상|중|하)/);
                     if (staggerMatch) attributes['Stagger'] = staggerMatch[1];
 
@@ -698,12 +704,10 @@ export default function CharacterSearchPage() {
                         const saMatch = text.match(/슈퍼아머\s*:\s*([^|]+)/);
                         if (saMatch) {
                             let saValue = saMatch[1].trim();
-                            // 다음 속성이 시작되기 전까지만 자르기 (예: "경직 면역 | 공격 타입...")
                             const nextAttrIndex = saValue.search(/(?:무력화|파괴|공격\s*타입|카운터)\s*:/);
                             if (nextAttrIndex > 0) {
                                 saValue = saValue.substring(0, nextAttrIndex).trim();
                             }
-                            // 파이프(|)가 포함되어 있다면 그 전까지만
                             if (saValue.includes('|')) {
                                 saValue = saValue.split('|')[0].trim();
                             }
@@ -884,13 +888,11 @@ export default function CharacterSearchPage() {
 
         const { points, effects, title } = character.arkPassive;
 
-        // 🌟 아크패시브 포인트 요약 (진화, 깨달음, 도약)
         const pointSummary = points.reduce((acc, p) => {
             acc[p.name] = p.value;
             return acc;
         }, {} as Record<string, number>);
 
-        // 🌟 효과 그룹화 (타입 -> 티어)
         const effectsByTypeAndTier: Record<string, Record<number, typeof effects>> = {
             '진화': {},
             '깨달음': {},
@@ -906,7 +908,7 @@ export default function CharacterSearchPage() {
 
                 if (type) {
                     const tierMatch = effect.description.match(/(\d+)티어/);
-                    const tier = tierMatch ? parseInt(tierMatch[1], 10) : 99; // 99 for unknown/other
+                    const tier = tierMatch ? parseInt(tierMatch[1], 10) : 99;
 
                     if (!effectsByTypeAndTier[type][tier]) {
                         effectsByTypeAndTier[type][tier] = [];
@@ -932,7 +934,6 @@ export default function CharacterSearchPage() {
 
         return (
             <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '20px' }}>
-                {/* 🌟 아크패시브 타이틀 추가 */}
                 {title && (
                     <div style={{
                         textAlign: 'center',
@@ -946,7 +947,6 @@ export default function CharacterSearchPage() {
                     </div>
                 )}
 
-                {/* 포인트 요약 */}
                 <div style={{
                     display: 'flex',
                     justifyContent: 'center',
@@ -964,10 +964,10 @@ export default function CharacterSearchPage() {
                             gap: '10px',
                             boxShadow: `0 0 10px ${getTypeBg(type)}`
                         }}>
-                            <img 
-                                src={type === '진화' ? 'https://static.lo4.app/icons/arkpassive_evolution.png' : 
-                                     type === '깨달음' ? 'https://static.lo4.app/icons/arkpassive_enlightenment.png' : 
-                                     'https://static.lo4.app/icons/arkpassive_leap.png'} 
+                            <img
+                                src={type === '진화' ? 'https://static.lo4.app/icons/arkpassive_evolution.png' :
+                                    type === '깨달음' ? 'https://static.lo4.app/icons/arkpassive_enlightenment.png' :
+                                        'https://static.lo4.app/icons/arkpassive_leap.png'}
                                 alt={type}
                                 style={{ width: '24px', height: '24px' }}
                             />
@@ -977,16 +977,15 @@ export default function CharacterSearchPage() {
                     ))}
                 </div>
 
-                {/* 효과 목록 (3열 레이아웃) */}
-                <div style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: 'repeat(3, 1fr)', // 3열 고정
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
                     gap: '20px',
-                    alignItems: 'start' // 상단 정렬
+                    alignItems: 'start'
                 }}>
                     {['진화', '깨달음', '도약'].map(type => {
                         const tiers = Object.keys(effectsByTypeAndTier[type]).map(Number).sort((a, b) => a - b);
-                        
+
                         return (
                             <div key={type} style={{
                                 background: 'var(--bg-card)',
@@ -995,44 +994,44 @@ export default function CharacterSearchPage() {
                                 border: `1px solid ${getTypeColor(type)}`,
                                 minHeight: '200px'
                             }}>
-                                <h3 style={{ 
-                                    color: getTypeColor(type), 
-                                    borderBottom: `1px solid ${getTypeColor(type)}`, 
-                                    paddingBottom: '10px', 
+                                <h3 style={{
+                                    color: getTypeColor(type),
+                                    borderBottom: `1px solid ${getTypeColor(type)}`,
+                                    paddingBottom: '10px',
                                     marginBottom: '20px',
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '8px',
                                     fontSize: '20px'
                                 }}>
-                                    <img 
-                                        src={type === '진화' ? 'https://static.lo4.app/icons/arkpassive_evolution.png' : 
-                                             type === '깨달음' ? 'https://static.lo4.app/icons/arkpassive_enlightenment.png' : 
-                                             'https://static.lo4.app/icons/arkpassive_leap.png'} 
+                                    <img
+                                        src={type === '진화' ? 'https://static.lo4.app/icons/arkpassive_evolution.png' :
+                                            type === '깨달음' ? 'https://static.lo4.app/icons/arkpassive_enlightenment.png' :
+                                                'https://static.lo4.app/icons/arkpassive_leap.png'}
                                         alt={type}
                                         style={{ width: '24px', height: '24px' }}
                                     />
                                     {type}
                                 </h3>
-                                
+
                                 {tiers.length > 0 ? (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                                         {tiers.map(tier => (
                                             <div key={tier}>
                                                 {tier !== 99 && (
-                                                    <div style={{ 
-                                                        fontSize: '14px', 
-                                                        color: '#aaa', 
-                                                        marginBottom: '8px', 
+                                                    <div style={{
+                                                        fontSize: '14px',
+                                                        color: '#aaa',
+                                                        marginBottom: '8px',
                                                         fontWeight: 'bold',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         gap: '6px'
                                                     }}>
-                                                        <span style={{ 
-                                                            display: 'inline-block', 
-                                                            width: '4px', 
-                                                            height: '12px', 
+                                                        <span style={{
+                                                            display: 'inline-block',
+                                                            width: '4px',
+                                                            height: '12px',
                                                             background: getTypeColor(type),
                                                             borderRadius: '2px'
                                                         }}></span>
@@ -1045,7 +1044,6 @@ export default function CharacterSearchPage() {
                                                         const nameMatch = cleanDesc.match(/\d+티어\s+(.+)/);
                                                         const displayName = nameMatch ? nameMatch[1] : cleanDesc;
 
-                                                        // 레벨 추출 (예: "중력 충격 Lv.1" -> "Lv.1")
                                                         const levelMatch = displayName.match(/Lv\.(\d+)/);
                                                         const level = levelMatch ? levelMatch[1] : "";
                                                         const nameOnly = displayName.replace(/Lv\.\d+/, '').trim();
@@ -1098,7 +1096,6 @@ export default function CharacterSearchPage() {
         );
     };
 
-    // 🌟 젬 툴팁 파싱 함수 추가
     const parseArkGridGemTooltip = (tooltip: string) => {
         try {
             const json = JSON.parse(tooltip);
@@ -1126,7 +1123,7 @@ export default function CharacterSearchPage() {
         try {
             const json = JSON.parse(tooltip);
             let description = "";
-            
+
             const traverse = (obj: any) => {
                 if (!obj) return;
                 if (obj.type === "ItemPartBox" && obj.value) {
@@ -1139,7 +1136,7 @@ export default function CharacterSearchPage() {
                     Object.values(obj).forEach(child => traverse(child));
                 }
             };
-            
+
             traverse(json);
             return description;
         } catch {
@@ -1150,14 +1147,14 @@ export default function CharacterSearchPage() {
     const parseArkGridEffectsWithPoints = (html: string) => {
         if (!html) return [];
         const lines = html.split(/<br\s*\/?>/gi);
-        
+
         return lines.map(line => {
             const cleanText = line.replace(/<[^>]+>/g, '').trim();
             if (!cleanText) return null;
 
             const match = cleanText.match(/^\[(\d+)P\]/);
             let requiredPoint = 0;
-            
+
             if (match) {
                 requiredPoint = parseInt(match[1], 10);
             }
@@ -1185,11 +1182,11 @@ export default function CharacterSearchPage() {
         const rightOrder = ["아군 공격 강화", "아군 피해 강화", "낙인력"];
 
         const effects = character.arkGridEffects || [];
-        
+
         const leftEffects = effects
             .filter(e => leftOrder.includes(e.name))
             .sort((a, b) => leftOrder.indexOf(a.name) - leftOrder.indexOf(b.name));
-        
+
         const rightEffects = effects
             .filter(e => rightOrder.includes(e.name))
             .sort((a, b) => rightOrder.indexOf(a.name) - rightOrder.indexOf(b.name));
@@ -1221,7 +1218,6 @@ export default function CharacterSearchPage() {
 
         return (
             <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
-                {/* 🌟 아크 그리드 효과 요약 */}
                 {effects.length > 0 && (
                     <div style={{
                         background: 'var(--bg-card)',
@@ -1258,8 +1254,7 @@ export default function CharacterSearchPage() {
                         const tooltipText = parseArkGridTooltip(grid.tooltip);
                         const effects = parseArkGridEffectsWithPoints(tooltipText);
 
-                        // 🌟 코어 등급에 따른 색상 결정 로직 추가
-                        let coreGradeColor = '#333'; // 기본값 (회색)
+                        let coreGradeColor = '#333';
                         if (grid.grade === "영웅") coreGradeColor = '#ba68c8';
                         else if (grid.grade === "전설") coreGradeColor = '#ffb74d';
                         else if (grid.grade === "유물") coreGradeColor = '#ff8a65';
@@ -1281,14 +1276,14 @@ export default function CharacterSearchPage() {
                                         height: '48px',
                                         borderRadius: '8px',
                                         overflow: 'hidden',
-                                        border: `1px solid ${coreGradeColor}`, // 🌟 테두리 색상 적용
+                                        border: `1px solid ${coreGradeColor}`,
                                         flexShrink: 0
                                     }}>
                                         <img src={grid.icon} alt={grid.effectName} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
                                     </div>
                                     <div style={{flex: 1, overflow: 'hidden'}}>
-                                        <div style={{fontSize: '12px', color: coreGradeColor, marginBottom: '2px', fontWeight: 'bold'}}>{grid.coreType}</div> {/* 🌟 위치 변경 및 크기 조정 */}
-                                        <div style={{fontSize: '16px', fontWeight: 'bold', color: coreGradeColor, marginBottom: '4px'}}>{grid.effectName}</div> {/* 🌟 위치 변경 및 크기 조정 */}
+                                        <div style={{fontSize: '12px', color: coreGradeColor, marginBottom: '2px', fontWeight: 'bold'}}>{grid.coreType}</div>
+                                        <div style={{fontSize: '16px', fontWeight: 'bold', color: coreGradeColor, marginBottom: '4px'}}>{grid.effectName}</div>
                                         <div style={{
                                             display: 'inline-block',
                                             background: 'rgba(255, 255, 255, 0.1)',
@@ -1302,7 +1297,7 @@ export default function CharacterSearchPage() {
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 {effects.length > 0 && (
                                     <div style={{
                                         background: 'rgba(0, 0, 0, 0.2)',
@@ -1334,7 +1329,6 @@ export default function CharacterSearchPage() {
                                     </div>
                                 )}
 
-                                {/* 🌟 보석 렌더링 추가 */}
                                 {grid.gems && grid.gems.length > 0 && (
                                     <div style={{
                                         marginTop: '5px',
@@ -1349,7 +1343,7 @@ export default function CharacterSearchPage() {
                                             {grid.gems.map((gem, gIdx) => {
                                                 const gemEffect = parseArkGridGemTooltip(gem.tooltip);
                                                 const gemEffects = formatArkGridEffects(gemEffect);
-                                                
+
                                                 return (
                                                     <div key={gIdx} style={{
                                                         display: 'flex',
@@ -1361,8 +1355,8 @@ export default function CharacterSearchPage() {
                                                         alignItems: 'center'
                                                     }}>
                                                         <div style={{
-                                                            width: '32px', 
-                                                            height: '32px', 
+                                                            width: '32px',
+                                                            height: '32px',
                                                             flexShrink: 0,
                                                             borderRadius: '4px',
                                                             overflow: 'hidden',
@@ -1394,7 +1388,6 @@ export default function CharacterSearchPage() {
             return <div style={{textAlign: 'center', color: '#aaa', padding: '20px'}}>원정대 캐릭터 정보가 없습니다.</div>;
         }
 
-        // 레벨 높은 순으로 정렬
         const sortedSiblings = [...character.siblings].sort((a, b) => {
             const getLevel = (val: string) => {
                 if (!val) return 0;
@@ -1408,7 +1401,7 @@ export default function CharacterSearchPage() {
         return (
             <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)', // 🌟 4열 고정
+                gridTemplateColumns: 'repeat(4, 1fr)',
                 gap: '15px',
                 padding: '20px',
                 maxWidth: '1400px',
@@ -1472,16 +1465,12 @@ export default function CharacterSearchPage() {
     const renderSkillTab = () => {
         if (!character) return null;
 
-        // 🌟 스킬 정렬 로직 변경: 레벨순 -> 장착순 (API에서 오는 순서 그대로 사용)
-        // 단, 필터링(레벨 2 이상, 룬 장착, 각성기)은 유지
         const sortedSkills = character.skills
             .filter(skill => skill.level >= 2 || skill.runeName || skill.isAwakening);
-            // .sort((a, b) => b.level - a.level); // 🌟 정렬 제거
 
-        // 🌟 스킬 요약 정보 계산
         let headAttackCount = 0;
         let backAttackCount = 0;
-        let pushImmuneCount = 0; // 경직 면역
+        let pushImmuneCount = 0;
         let destrLv2Count = 0;
         let destrLv1Count = 0;
         let counterCount = 0;
@@ -1512,7 +1501,6 @@ export default function CharacterSearchPage() {
                 maxWidth: '1200px',
                 margin: '0 auto'
             }}>
-                {/* 🌟 스킬 요약 섹션 */}
                 <div style={{
                     background: 'var(--bg-card)',
                     border: '1px solid var(--border-color)',
@@ -1564,7 +1552,6 @@ export default function CharacterSearchPage() {
                 </div>
 
                 {sortedSkills.map((skill, idx) => {
-                    // Find gems for this skill
                     const skillGems = character.gems.filter(gem => {
                         let gemSkillIcon = gem.skillIcon;
                         if (!gemSkillIcon) {
@@ -1572,14 +1559,13 @@ export default function CharacterSearchPage() {
                         }
                         return gemSkillIcon === skill.icon;
                     });
-                    
-                    // Sort gems: Damage (멸화/겁화) first, then Cooldown (홍염/작열)
+
                     skillGems.sort((a, b) => {
-                         const isDmgA = isDamageGem(a);
-                         const isDmgB = isDamageGem(b);
-                         if (isDmgA && !isDmgB) return -1;
-                         if (!isDmgA && isDmgB) return 1;
-                         return b.level - a.level;
+                        const isDmgA = isDamageGem(a);
+                        const isDmgB = isDamageGem(b);
+                        if (isDmgA && !isDmgB) return -1;
+                        if (!isDmgA && isDmgB) return 1;
+                        return b.level - a.level;
                     });
 
                     const attributes = parseSkillTooltip(skill.tooltip);
@@ -1613,7 +1599,7 @@ export default function CharacterSearchPage() {
                                     <div style={{fontWeight: 'bold', color: '#fff', fontSize: '16px'}}>{skill.name}</div>
                                     <div style={{fontSize: '12px', color: '#aaa'}}>{skill.type} {skill.isAwakening ? '[각성기]' : ''}</div>
                                 </div>
-                                
+
                                 {skill.runeName && (
                                     <div style={{marginLeft: '20px', display: 'flex', alignItems: 'center', gap: '6px'}}>
                                         <img src={skill.runeIcon} alt={skill.runeName} style={{width: '24px', height: '24px'}} />
@@ -1737,7 +1723,7 @@ export default function CharacterSearchPage() {
         );
     };
 
-    const tabs = ["전체", "스킬", "아크패시브", "아크 그리드", "원정대"]; // 🌟 "각인" -> "아크 그리드"로 수정
+    const tabs = ["전체", "스킬", "아크패시브", "아크 그리드", "원정대"];
     const leftEquipOrder = ["투구", "어깨", "상의", "하의", "장갑", "무기"];
     const rightEquipTypes = ["목걸이", "귀걸이", "반지", "어빌리티 스톤", "팔찌"];
 
@@ -1754,11 +1740,14 @@ export default function CharacterSearchPage() {
         ?.filter(e => !e.name.includes("감소"))
         .slice(0, 5) || [];
 
-    const arkPassiveTitleIcon = character?.arkPassive?.effects?.find(e => e.name === '깨달음')?.icon;
+    // 🌟 1. 전투력 데이터 직접 추출 및 기본 스텟 분리 로직 추가
+    const combatPowerStat = character?.stats?.find(s => s.type === '전투력');
+    const displayCombatPower = character?.combatPower || character?.CombatPower || combatPowerStat?.value;
+    const filteredStats = character?.stats?.filter(s => s.type !== '전투력') || [];
 
     return (
         <div className="container" style={{maxWidth: '1400px', margin: '0 auto', padding: '40px 20px'}}>
-            
+
             {loading && <div style={{textAlign: 'center', color: '#aaa'}}>검색 중...</div>}
             {error && <div style={{textAlign: 'center', color: '#ef5350'}}>캐릭터를 찾을 수 없습니다.</div>}
 
@@ -1817,14 +1806,15 @@ export default function CharacterSearchPage() {
                                     color: '#ffb74d'
                                 }}>{character.itemMaxLevel || character.itemAvgLevel}</div>
                             </div>
-                            {character.combatPower && (
+                            {/* 🌟 2. 추출한 displayCombatPower 렌더링하도록 변경 */}
+                            {displayCombatPower && (
                                 <div style={{textAlign: 'center'}}>
                                     <div style={{fontSize: '14px', color: '#aaa', marginBottom: '5px'}}>전투력</div>
                                     <div style={{
                                         fontSize: '24px',
                                         fontWeight: 'bold',
                                         color: '#ba94ff'
-                                    }}>{character.combatPower}</div>
+                                    }}>{displayCombatPower}</div>
                                 </div>
                             )}
                             <div style={{textAlign: 'center'}}>
@@ -1907,7 +1897,8 @@ export default function CharacterSearchPage() {
                                         paddingBottom: '10px'
                                     }}>기본 특성</h3>
                                     <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px'}}>
-                                        {character.stats.map((stat, idx) => (
+                                        {/* 🌟 3. 상단에 표시한 전투력을 제외한 filteredStats 사용 */}
+                                        {filteredStats.map((stat, idx) => (
                                             <div key={idx} style={{
                                                 display: 'flex',
                                                 justifyContent: 'space-between',
@@ -1985,8 +1976,7 @@ export default function CharacterSearchPage() {
                                     {character.arkGrids && character.arkGrids.length > 0 ? (
                                         <div style={{display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '4px'}}>
                                             {character.arkGrids.map((grid, idx) => {
-                                                // 🌟 코어 등급에 따른 색상 결정 로직 추가
-                                                let coreGradeColor = '#333'; // 기본값 (회색)
+                                                let coreGradeColor = '#333';
                                                 if (grid.grade === "영웅") coreGradeColor = '#ba68c8';
                                                 else if (grid.grade === "전설") coreGradeColor = '#ffb74d';
                                                 else if (grid.grade === "유물") coreGradeColor = '#ff8a65';
@@ -2008,7 +1998,7 @@ export default function CharacterSearchPage() {
                                                             height: '36px',
                                                             borderRadius: '6px',
                                                             overflow: 'hidden',
-                                                            border: `1px solid ${coreGradeColor}`, // 🌟 테두리 색상 적용
+                                                            border: `1px solid ${coreGradeColor}`,
                                                             flexShrink: 0
                                                         }}>
                                                             <img src={grid.icon} alt={grid.effectName}
@@ -2025,7 +2015,7 @@ export default function CharacterSearchPage() {
                                                             <div style={{
                                                                 fontSize: '11px',
                                                                 fontWeight: 'bold',
-                                                                color: coreGradeColor, // 🌟 텍스트 색상 적용
+                                                                color: coreGradeColor,
                                                                 textAlign: 'center',
                                                                 lineHeight: '1.2',
                                                                 width: '100%',
@@ -2205,7 +2195,8 @@ export default function CharacterSearchPage() {
                                         }}>장비</h3>
                                         <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
                                             {leftEquipments.map((eq, index) => {
-                                                const {quality} = parseTooltip(eq.tooltip);
+                                                // 🌟 4. 파싱된 데이터에서 advancedReforge 사용
+                                                const {quality, advancedReforge} = parseTooltip(eq.tooltip);
                                                 const qualityInfo = getQualityGrade(quality);
                                                 return (
                                                     <div key={index} style={{
@@ -2255,14 +2246,33 @@ export default function CharacterSearchPage() {
                                                             minHeight: '40px'
                                                         }}>
                                                             <div style={{fontSize: '11px', color: '#aaa'}}>{eq.type}</div>
+                                                            {/* 🌟 5. 상급 재련 단계가 있다면 배지 형태로 추가 렌더링 */}
                                                             <div style={{
                                                                 fontSize: '13px',
                                                                 fontWeight: 'bold',
                                                                 color: getGradeColor(eq.grade),
                                                                 whiteSpace: 'nowrap',
                                                                 overflow: 'hidden',
-                                                                textOverflow: 'ellipsis'
-                                                            }}>{eq.name}</div>
+                                                                textOverflow: 'ellipsis',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '6px'
+                                                            }}>
+                                                                <span>{eq.name}</span>
+                                                                {advancedReforge > 0 && (
+                                                                    <span style={{
+                                                                        fontSize: '11px',
+                                                                        color: '#ffb74d',
+                                                                        background: 'rgba(255, 183, 77, 0.15)',
+                                                                        padding: '2px 6px',
+                                                                        borderRadius: '4px',
+                                                                        fontWeight: 'bold',
+                                                                        flexShrink: 0
+                                                                    }}>
+                                                                        상재 {advancedReforge}
+                                                                </span>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 );
@@ -2279,7 +2289,6 @@ export default function CharacterSearchPage() {
                                         <div style={{display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px'}}>
                                             {character.skills
                                                 .filter(skill => skill.level >= 2 || skill.runeName || skill.isAwakening)
-                                                // .sort((a, b) => b.level - a.level) // 🌟 정렬 제거
                                                 .map((skill, index) => (
                                                     <div key={index} style={{
                                                         display: 'flex',

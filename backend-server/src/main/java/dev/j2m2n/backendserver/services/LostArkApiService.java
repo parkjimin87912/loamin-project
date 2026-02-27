@@ -122,7 +122,7 @@ public class LostArkApiService {
             dto.setItemMaxLevel(profile.path("ItemMaxLevel").asText(null));
 
             // 기존 코드에서 가져오던 CombatPower가 DTO에 있다면 추가 (없으면 주석 처리)
-            // dto.setCombatPower(profile.path("CombatPower").asText(null));
+            dto.setCombatPower(profile.path("CombatPower").asText(null));
 
             dto.setCharacterImage(profile.path("CharacterImage").asText(null));
             dto.setGuildName(profile.path("GuildName").asText(null));
