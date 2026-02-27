@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import axios from 'axios';
 import ToolsHeader from '../../components/ToolsHeader';
 import '../../App.css';
 
@@ -7,11 +8,55 @@ export default function AbydosCraftPage() {
         timber: 0, softTimber: 0, sturdyTimber: 0, abydosTimber: 0, powder: 0
     });
 
+    // 🌟 제작 타입 선택 (기본값: 일반 아비도스)
+    const [craftType, setCraftType] = useState<'normal' | 'advanced'>('normal');
+
+    // 🌟 시세 상태 추가 (화면 표시용은 아니지만 내부 로직 유지)
+    const [prices, setPrices] = useState<Record<string, number>>({
+        '일반 목재': 0, '부드러운 목재': 0, '튼튼한 목재': 0, '아비도스 목재': 0, '벌목의 가루': 0
+    });
+
+    // 🌟 API로 시세 불러오기 (가격 표시는 제거됨)
+    useEffect(() => {
+        const fetchMarketPrices = async () => {
+            try {
+                const response = await axios.get('http://localhost:8080/api/v1/market/items', {
+                    params: { category: 'life', subCategory: '벌목' }
+                });
+
+                if (Array.isArray(response.data)) {
+                    const newPrices = { ...prices };
+                    response.data.forEach((item: any) => {
+                        const price = item.recentPrice > 0 ? item.recentPrice : item.minPrice;
+                        const unitPrice = price / (item.bundle > 0 ? item.bundle : 1);
+
+                        if (item.name === '목재') newPrices['일반 목재'] = unitPrice;
+                        else if (item.name === '부드러운 목재') newPrices['부드러운 목재'] = unitPrice;
+                        else if (item.name === '튼튼한 목재') newPrices['튼튼한 목재'] = unitPrice;
+                        else if (item.name === '아비도스 목재') newPrices['아비도스 목재'] = unitPrice;
+                    });
+                    setPrices(newPrices);
+                }
+            } catch (error) {
+                console.error("시세 API 오류", error);
+            }
+        };
+        fetchMarketPrices();
+    }, []);
+
     const result = useMemo(() => {
         if (Object.values(owned).every(v => v === 0)) return null;
 
         const checkFeasibility = (n: number) => {
-            const TARGET = { abydos: 43 * n, soft: 59 * n, normal: 112 * n };
+            let TARGET;
+            if (craftType === 'advanced') {
+                // 상급 아비도스 융화 재료
+                TARGET = { abydos: 43 * n, soft: 59 * n, normal: 112 * n };
+            } else {
+                // 일반 아비도스 융화 재료 (비율 수정됨: 33, 45, 86)
+                TARGET = { abydos: 33 * n, soft: 45 * n, normal: 86 * n };
+            }
+
             const inv = { sturdy: owned.sturdyTimber, soft: owned.softTimber, normal: owned.timber, powder: owned.powder, abydos: owned.abydosTimber };
             const ops = { sturdyToNormal: 0, normalToPowder: 0, softToPowder: 0, powderToAbydos: 0 };
 
@@ -75,7 +120,7 @@ export default function AbydosCraftPage() {
         if (bestOps.powderToAbydos > 0) actions.push({ step: step++, label: "벌목의 가루 ➡ 아비도스 목재", count: bestOps.powderToAbydos, desc: `(가루 ${bestOps.powderToAbydos * 100}개 소모)` });
 
         return { maxCrafts: maxN, actions, isValid: true };
-    }, [owned]);
+    }, [owned, craftType]);
 
     return (
         <div className="container">
@@ -85,22 +130,63 @@ export default function AbydosCraftPage() {
             <div className="reforge-container">
                 <aside className="sidebar-card" style={{ height: 'fit-content' }}>
                     <div className="sidebar-title" style={{ fontSize: '18px', marginBottom: '20px' }}>🎒 보유 재료 입력</div>
+                    
+                    {/* 🌟 제작 타입 선택 탭 */}
+                    <div className="type-selector" style={{ marginBottom: '20px' }}>
+                        <button 
+                            className={`type-btn ${craftType === 'normal' ? 'active' : ''}`} 
+                            onClick={() => setCraftType('normal')}
+                            style={{ flex: 1, justifyContent: 'center' }}
+                        >
+                            일반 아비도스
+                        </button>
+                        <button 
+                            className={`type-btn ${craftType === 'advanced' ? 'active' : ''}`} 
+                            onClick={() => setCraftType('advanced')}
+                            style={{ flex: 1, justifyContent: 'center' }}
+                        >
+                            상급 아비도스
+                        </button>
+                    </div>
+
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        <div className="price-input-row"><span style={{color:'var(--text-secondary)'}}>일반 목재</span><input type="number" className="price-input" style={{width:'100px'}} placeholder="0" value={owned.timber || ''} onChange={(e) => setOwned({...owned, timber: Number(e.target.value)})} /></div>
-                        <div className="price-input-row"><span style={{color:'var(--text-secondary)'}}>부드러운 목재</span><input type="number" className="price-input" style={{width:'100px'}} placeholder="0" value={owned.softTimber || ''} onChange={(e) => setOwned({...owned, softTimber: Number(e.target.value)})} /></div>
-                        <div className="price-input-row"><span style={{color:'var(--text-secondary)'}}>튼튼한 목재</span><input type="number" className="price-input" style={{width:'100px'}} placeholder="0" value={owned.sturdyTimber || ''} onChange={(e) => setOwned({...owned, sturdyTimber: Number(e.target.value)})} /></div>
-                        <div className="price-input-row"><span style={{color:'var(--text-accent)'}}>아비도스 목재</span><input type="number" className="price-input" style={{width:'100px'}} placeholder="0" value={owned.abydosTimber || ''} onChange={(e) => setOwned({...owned, abydosTimber: Number(e.target.value)})} /></div>
-                        <div className="price-input-row" style={{opacity:0.8}}><span style={{color:'#aaa'}}>벌목의 가루</span><input type="number" className="price-input" style={{width:'100px'}} placeholder="0" value={owned.powder || ''} onChange={(e) => setOwned({...owned, powder: Number(e.target.value)})} /></div>
+                        <div className="price-input-row">
+                            <span style={{color:'var(--text-secondary)'}}>일반 목재</span>
+                            <input type="number" className="price-input" style={{width:'100px'}} placeholder="0" value={owned.timber || ''} onChange={(e) => setOwned({...owned, timber: Number(e.target.value)})} />
+                        </div>
+                        <div className="price-input-row">
+                            <span style={{color:'var(--text-secondary)'}}>부드러운 목재</span>
+                            <input type="number" className="price-input" style={{width:'100px'}} placeholder="0" value={owned.softTimber || ''} onChange={(e) => setOwned({...owned, softTimber: Number(e.target.value)})} />
+                        </div>
+                        <div className="price-input-row">
+                            <span style={{color:'var(--text-secondary)'}}>튼튼한 목재</span>
+                            <input type="number" className="price-input" style={{width:'100px'}} placeholder="0" value={owned.sturdyTimber || ''} onChange={(e) => setOwned({...owned, sturdyTimber: Number(e.target.value)})} />
+                        </div>
+                        <div className="price-input-row">
+                            <span style={{color:'var(--text-accent)'}}>아비도스 목재</span>
+                            <input type="number" className="price-input" style={{width:'100px'}} placeholder="0" value={owned.abydosTimber || ''} onChange={(e) => setOwned({...owned, abydosTimber: Number(e.target.value)})} />
+                        </div>
+                        <div className="price-input-row" style={{opacity:0.8}}>
+                            <span style={{color:'#aaa'}}>벌목의 가루</span>
+                            <input type="number" className="price-input" style={{width:'100px'}} placeholder="0" value={owned.powder || ''} onChange={(e) => setOwned({...owned, powder: Number(e.target.value)})} />
+                        </div>
                     </div>
                 </aside>
 
                 <main className="content-card" style={{ padding: '0' }}>
-                    <div className="card-header" style={{ padding: '20px', borderBottom: '1px solid var(--border-color)' }}><span className="card-title">⚡ 교환 횟수 요약</span></div>
+                    <div className="card-header" style={{ padding: '20px', borderBottom: '1px solid var(--border-color)' }}>
+                        <span className="card-title">⚡ 교환 횟수 요약 ({craftType === 'advanced' ? '상급' : '일반'})</span>
+                    </div>
                     {result ? (
                         <div style={{ padding: '20px' }}>
                             <div style={{ marginBottom:'30px', textAlign:'center' }}>
                                 <div style={{ fontSize:'14px', color:'var(--text-secondary)' }}>최대 제작 가능</div>
-                                <div style={{ fontSize:'48px', fontWeight:'bold', color:'var(--text-accent)' }}>{result.maxCrafts} <span style={{fontSize:'18px'}}>회</span></div>
+                                <div style={{ fontSize:'48px', fontWeight:'bold', color:'var(--text-accent)' }}>
+                                    {result.maxCrafts} <span style={{fontSize:'18px'}}>회</span>
+                                    <span style={{fontSize:'20px', color:'#aaa', fontWeight:'normal', marginLeft:'8px'}}>
+                                        (약 {result.maxCrafts * 10}개)
+                                    </span>
+                                </div>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                 {result.actions.map((act) => (

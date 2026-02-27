@@ -288,7 +288,7 @@ export default function AbydosPage() {
                                         <div key={mIdx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-input)', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
                                             <span style={{ fontSize: '13px', color: '#e1e1e8' }}>{mat.name}</span>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                                <input type="number" className="price-input" style={{ width: '70px', padding: '4px 8px' }} value={mat.price} onChange={(e) => handleMaterialPriceChange(group.id, mIdx, Number(e.target.value))} />
+                                                <input type="number" className="price-input" style={{ width: '70px', padding: '4px 0px' }} value={mat.price} onChange={(e) => handleMaterialPriceChange(group.id, mIdx, Number(e.target.value))} />
                                                 <span style={{ fontSize: '11px', color: '#666' }}>G</span>
                                             </div>
                                         </div>

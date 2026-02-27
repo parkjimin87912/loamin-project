@@ -1,13 +1,40 @@
 import { useState, useEffect, useRef } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import '../App.css';
 
 export default function Layout() {
     const navigate = useNavigate();
+    const location = useLocation();
+
+    // 검색 관련 상태
     const [characterName, setCharacterName] = useState("");
     const [recentSearches, setRecentSearches] = useState<string[]>([]);
     const [showRecent, setShowRecent] = useState(false);
+
+    // 드롭다운 상태
+    const [isToolsOpen, setIsToolsOpen] = useState(false);
+    const [isMarketOpen, setIsMarketOpen] = useState(false);
+
     const searchRef = useRef<HTMLDivElement>(null);
+
+    // 도구 메뉴 목록 (순서 수정됨)
+    const toolsMenu = [
+        { name: "일반 재련", path: "/tools/general" },
+        { name: "상급 재련", path: "/tools/advanced" },
+        { name: "아비도스 쌀산기", path: "/tools/abydos" },
+        { name: "아비도스 제작", path: "/tools/craft" },
+        { name: "경매 계산기", path: "/tools/auction" },
+        { name: "스탯 계산기", path: "/tools/stat-calc" },
+    ];
+
+    // 시세 정보 메뉴 목록
+    const marketMenu = [
+        { name: "재련 재료", path: "/market/reforge" },
+        { name: "생활 재료", path: "/market/life" },
+        { name: "유물 각인서", path: "/market/engraving" },
+        { name: "보석", path: "/market/gem" },
+        { name: "배틀 아이템", path: "/market/battle" },
+    ];
 
     useEffect(() => {
         const saved = localStorage.getItem('recentSearches');
@@ -20,6 +47,7 @@ export default function Layout() {
         }
 
         const handleClickOutside = (event: MouseEvent) => {
+            // 검색바 외부 클릭 시 닫기
             if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
                 setShowRecent(false);
             }
@@ -34,15 +62,14 @@ export default function Layout() {
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         if (!characterName.trim()) return;
-        
+
         const trimmed = characterName.trim();
         const updated = [trimmed, ...recentSearches.filter(s => s !== trimmed)].slice(0, 10);
         setRecentSearches(updated);
         localStorage.setItem('recentSearches', JSON.stringify(updated));
-        
+
         setShowRecent(false);
         navigate(`/character?name=${trimmed}`);
-        // 검색 후 입력창 초기화는 선택사항이지만, 보통 유지하거나 초기화함. 여기서는 유지.
     };
 
     const handleRecentClick = (name: string) => {
@@ -62,15 +89,16 @@ export default function Layout() {
         <div className="app-container">
             {/* 1. 상단 헤더 */}
             <header className="header">
-                <div className="container header-inner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer', fontSize: '24px', fontWeight: 'bold', color: '#fff' }}>⚔️ LOAMIN</div>
-                    
-                    {/* 검색바 영역 */}
-                    <div style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'relative' }} ref={searchRef}>
+                <div className="container header-inner" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', height: '100%' }}>
+                    {/* 로고 (왼쪽 정렬) */}
+                    <div className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer', fontSize: '24px', fontWeight: 'bold', color: '#fff', justifySelf: 'start' }}>⚔️ LOAMIN</div>
+
+                    {/* 검색바 영역 (중앙 정렬) */}
+                    <div style={{ display: 'flex', justifyContent: 'center', position: 'relative', width: '100%' }} ref={searchRef}>
                         <form onSubmit={handleSearch} style={{ width: '100%', maxWidth: '400px', position: 'relative' }}>
-                            <input 
-                                type="text" 
-                                placeholder="캐릭터 검색..." 
+                            <input
+                                type="text"
+                                placeholder="캐릭터 검색..."
                                 value={characterName}
                                 onChange={(e) => setCharacterName(e.target.value)}
                                 onFocus={() => setShowRecent(true)}
@@ -118,7 +146,7 @@ export default function Layout() {
                                         최근 검색어
                                     </div>
                                     {recentSearches.map((name, index) => (
-                                        <div 
+                                        <div
                                             key={index}
                                             onClick={() => handleRecentClick(name)}
                                             style={{
@@ -135,7 +163,7 @@ export default function Layout() {
                                             onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                         >
                                             <span>{name}</span>
-                                            <span 
+                                            <span
                                                 onClick={(e) => removeSearchTerm(name, e)}
                                                 style={{ color: '#666', fontSize: '16px', padding: '0 4px' }}
                                                 onMouseEnter={(e) => e.currentTarget.style.color = '#ef5350'}
@@ -150,32 +178,145 @@ export default function Layout() {
                         </form>
                     </div>
 
-                    <div style={{ width: '80px' }}></div>
+                    {/* 오른쪽 여백 (균형 맞추기용) */}
+                    <div style={{ justifySelf: 'end' }}></div>
                 </div>
             </header>
 
             {/* 2. 메인 네비게이션 (활성 상태 표시) */}
             <nav className="nav-bar">
                 <div className="container">
-                    <ul className="nav-list">
-                        <li>
-                            <NavLink to="/" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                    <ul className="nav-list" style={{ display: 'flex', justifyContent: 'center', gap: '0' }}>
+                        <li style={{ flex: 1, textAlign: 'center' }}>
+                            <NavLink to="/" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} style={{ width: '100%', justifyContent: 'center' }}>
                                 메인
                             </NavLink>
                         </li>
-                        <li>
-                            {/* 도구 하위 페이지로 가도 '도구' 메뉴에 불이 들어오게 설정 */}
-                            <NavLink to="/tools" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                                도구
-                            </NavLink>
+                        
+                        {/* 도구 메뉴 (드롭다운) */}
+                        <li 
+                            onMouseEnter={() => setIsToolsOpen(true)}
+                            onMouseLeave={() => setIsToolsOpen(false)}
+                            style={{ position: 'relative', height: '100%', display: 'flex', alignItems: 'center', flex: 1, justifyContent: 'center' }}
+                        >
+                            <div 
+                                className={`nav-item ${location.pathname.startsWith('/tools') ? 'active' : ''}`}
+                                style={{ cursor: 'default', display: 'flex', alignItems: 'center', gap: '6px', width: '100%', justifyContent: 'center' }}
+                            >
+                                도구 <span style={{ fontSize: '10px', opacity: 0.7 }}>▼</span>
+                            </div>
+
+                            {isToolsOpen && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '100%',
+                                    left: '0',
+                                    width: '100%',
+                                    background: '#1e1e1e',
+                                    border: '1px solid #333',
+                                    borderRadius: '0 0 8px 8px',
+                                    padding: '8px 0',
+                                    zIndex: 1000,
+                                    boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '2px'
+                                }}>
+                                    {toolsMenu.map((tool) => (
+                                        <div 
+                                            key={tool.path}
+                                            onClick={() => {
+                                                navigate(tool.path);
+                                                setIsToolsOpen(false);
+                                            }}
+                                            style={{
+                                                padding: '10px 0',
+                                                color: location.pathname === tool.path ? '#a970ff' : '#ccc',
+                                                fontSize: '14px',
+                                                fontWeight: location.pathname === tool.path ? 'bold' : 'normal',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s',
+                                                textAlign: 'center'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                                e.currentTarget.style.color = '#fff';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.background = 'transparent';
+                                                e.currentTarget.style.color = location.pathname === tool.path ? '#a970ff' : '#ccc';
+                                            }}
+                                        >
+                                            {tool.name}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </li>
-                        <li>
-                            <NavLink to="/market" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                                시세 정보
-                            </NavLink>
+
+                        {/* 시세 정보 메뉴 (드롭다운) */}
+                        <li 
+                            onMouseEnter={() => setIsMarketOpen(true)}
+                            onMouseLeave={() => setIsMarketOpen(false)}
+                            style={{ position: 'relative', height: '100%', display: 'flex', alignItems: 'center', flex: 1, justifyContent: 'center' }}
+                        >
+                            <div 
+                                className={`nav-item ${location.pathname.startsWith('/market') ? 'active' : ''}`}
+                                style={{ cursor: 'default', display: 'flex', alignItems: 'center', gap: '6px', width: '100%', justifyContent: 'center' }}
+                            >
+                                시세 정보 <span style={{ fontSize: '10px', opacity: 0.7 }}>▼</span>
+                            </div>
+
+                            {isMarketOpen && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '100%',
+                                    left: '0',
+                                    width: '100%',
+                                    background: '#1e1e1e',
+                                    border: '1px solid #333',
+                                    borderRadius: '0 0 8px 8px',
+                                    padding: '8px 0',
+                                    zIndex: 1000,
+                                    boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '2px'
+                                }}>
+                                    {marketMenu.map((item) => (
+                                        <div 
+                                            key={item.path}
+                                            onClick={() => {
+                                                navigate(item.path);
+                                                setIsMarketOpen(false);
+                                            }}
+                                            style={{
+                                                padding: '10px 0',
+                                                color: location.pathname === item.path ? '#a970ff' : '#ccc',
+                                                fontSize: '14px',
+                                                fontWeight: location.pathname === item.path ? 'bold' : 'normal',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s',
+                                                textAlign: 'center'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                                e.currentTarget.style.color = '#fff';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.background = 'transparent';
+                                                e.currentTarget.style.color = location.pathname === item.path ? '#a970ff' : '#ccc';
+                                            }}
+                                        >
+                                            {item.name}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </li>
-                        <li>
-                            <NavLink to="/calendar" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+
+                        <li style={{ flex: 1, textAlign: 'center' }}>
+                            <NavLink to="/calendar" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} style={{ width: '100%', justifyContent: 'center' }}>
                                 게임 일정
                             </NavLink>
                         </li>

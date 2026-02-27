@@ -282,9 +282,10 @@ input:checked + .slider:before { transform: translateX(20px); }
   align-items: center;
   margin-bottom: 10px;
 }
+/* 🌟 숫자 입력창 스타일 수정 (화살표 오른쪽 끝에 붙이기) */
 .price-input {
   width: 90px;
-  padding: 6px 10px;
+  padding: 6px 0 6px 10px; /* 오른쪽 패딩 제거 */
   background-color: var(--bg-input);
   border: 1px solid var(--border-color);
   color: #fff;
@@ -292,7 +293,52 @@ input:checked + .slider:before { transform: translateX(20px); }
   text-align: right;
   outline: none;
 }
+
+/* WebKit 브라우저 (Chrome, Safari, Edge) 스핀 버튼 스타일링 */
+.price-input::-webkit-inner-spin-button,
+.price-input::-webkit-outer-spin-button {
+  opacity: 1;
+  height: 24px;
+  cursor: pointer;
+  filter: invert(1);
+  margin-left: 5px; /* 숫자와 최소한의 간격만 유지 */
+}
+
 .price-input:focus { border-color: var(--text-accent); }
+
+/* 🌟 커스텀 체크박스 스타일 */
+.custom-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--bg-input);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.custom-checkbox:checked {
+  background-color: var(--text-accent);
+  border-color: var(--text-accent);
+}
+
+.custom-checkbox:checked::after {
+  content: '✔';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.custom-checkbox:hover {
+  border-color: var(--text-accent);
+}
 
 /* --- 오른쪽 메인 컨텐츠 --- */
 .content-card {

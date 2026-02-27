@@ -15,6 +15,7 @@ export default function Home() {
 
     // [왼쪽] 편의 도구 데이터
     const utilityTools = [
+        { name: "스탯 계산기", icon: "📊", path: "/tools/stat-calc", desc: "뭉가/음돌 최적 스탯 분배", color: "#81c784" },
         { name: "일반 재련", icon: "🔨", path: "/tools/general", desc: "기본 재련 확률/비용 계산", color: "#ffb74d" },
         { name: "상급 재련", icon: "✨", path: "/tools/advanced", desc: "상급 재련 최적화 계산", color: "#ffd54f" },
         { name: "아비도스 쌀산기", icon: "🎲", path: "/tools/abydos", desc: "제작 이득/손해 자동 분석", color: "#e0e0e0" },
@@ -38,45 +39,66 @@ export default function Home() {
             className="tool-card"
             style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '18px', borderRadius: '12px', background: 'var(--bg-input)',
-                cursor: 'pointer', border: '1px solid transparent', transition: 'all 0.2s ease',
-                minHeight: '84px' // 높이 강제 통일
+                padding: '24px', borderRadius: '20px', background: 'var(--bg-input)',
+                cursor: 'pointer', border: '1px solid rgba(255,255,255,0.05)', 
+                transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
+                position: 'relative', overflow: 'hidden', height: '100%'
             }}
             onMouseOver={(e) => {
-                e.currentTarget.style.borderColor = color;
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.background = `${color}10`; // 투명도 10%
+                e.currentTarget.style.transform = 'translateY(-5px)';
+                e.currentTarget.style.boxShadow = `0 10px 20px -5px ${color}40`;
+                e.currentTarget.style.borderColor = `${color}50`;
             }}
             onMouseOut={(e) => {
-                e.currentTarget.style.borderColor = 'transparent';
                 e.currentTarget.style.transform = 'none';
-                e.currentTarget.style.background = 'var(--bg-input)';
+                e.currentTarget.style.boxShadow = 'none';
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
             }}
         >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+            {/* 배경 장식 효과 */}
+            <div style={{
+                position: 'absolute', top: '-30px', right: '-30px', width: '120px', height: '120px',
+                background: color, opacity: 0.05, borderRadius: '50%', filter: 'blur(30px)', pointerEvents: 'none'
+            }} />
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', width: '100%', zIndex: 1 }}>
                 <div style={{
-                    width: '48px', height: '48px', borderRadius: '12px',
+                    width: '56px', height: '56px', borderRadius: '16px',
                     background: `${color}15`, // 아이콘 배경 (투명도 15%)
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '24px', color: color
+                    fontSize: '28px', color: color, flexShrink: 0
                 }}>
                     {icon}
                 </div>
-                <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontWeight: 'bold', color: '#e0e0e0', fontSize:'16px', marginBottom:'4px' }}>{title}</div>
-                    <div style={{ fontSize: '13px', color: '#888' }}>{desc}</div>
+                <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 'bold', color: '#fff', fontSize:'18px', marginBottom:'6px' }}>{title}</div>
+                    <div style={{ fontSize: '13px', color: '#aaa', lineHeight: '1.4' }}>{desc}</div>
                 </div>
+                <div style={{ color: color, opacity: 0.5, fontSize: '20px' }}>➜</div>
             </div>
-            <span style={{ color: '#444', fontSize:'18px' }}>➜</span>
         </div>
     );
 
     return (
-        <div className="container">
+        <div className="container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
             {/* 1. 상단 배너 (검색창 추가) */}
-            <section className="banner-area" style={{ marginBottom: '40px', padding: '50px 20px', height: 'auto', minHeight:'200px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <div className="banner-title" style={{ fontSize: '3rem', letterSpacing: '2px', marginBottom:'10px' }}>LOAMIN</div>
-                <div className="banner-desc" style={{ opacity: 0.8, fontSize: '1.1rem', marginBottom: '30px' }}>로스트아크의 모든 정보를 한눈에, 더 스마트하게</div>
+            <section className="banner-area" style={{ 
+                marginBottom: '60px', padding: '80px 20px', 
+                height: 'auto', minHeight:'280px', 
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(169, 112, 255, 0.05) 100%)',
+                borderRadius: '0 0 40px 40px'
+            }}>
+                <div className="banner-title" style={{ 
+                    fontSize: '4rem', letterSpacing: '4px', marginBottom:'15px',
+                    background: 'linear-gradient(45deg, #fff, #a970ff)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    fontWeight: '900'
+                }}>LOAMIN</div>
+                <div className="banner-desc" style={{ opacity: 0.7, fontSize: '1.2rem', marginBottom: '50px', fontWeight:'300' }}>
+                    로스트아크의 모든 정보를 한눈에, 더 스마트하게
+                </div>
                 
                 <form onSubmit={handleSearch} style={{ width: '100%', maxWidth: '600px', position: 'relative' }}>
                     <input 
@@ -86,15 +108,26 @@ export default function Home() {
                         onChange={(e) => setSearchName(e.target.value)}
                         style={{
                             width: '100%',
-                            padding: '15px 25px',
-                            borderRadius: '30px',
-                            border: 'none',
-                            background: 'rgba(255, 255, 255, 0.1)',
+                            padding: '20px 30px',
+                            borderRadius: '50px',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            background: 'rgba(30, 30, 30, 0.8)',
                             color: '#fff',
                             fontSize: '16px',
                             backdropFilter: 'blur(10px)',
-                            boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-                            outline: 'none'
+                            boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                            outline: 'none',
+                            transition: 'all 0.3s ease'
+                        }}
+                        onFocus={(e) => {
+                            e.target.style.background = 'rgba(40, 40, 40, 0.95)';
+                            e.target.style.boxShadow = '0 8px 32px rgba(169, 112, 255, 0.2)';
+                            e.target.style.borderColor = '#a970ff';
+                        }}
+                        onBlur={(e) => {
+                            e.target.style.background = 'rgba(30, 30, 30, 0.8)';
+                            e.target.style.boxShadow = '0 8px 32px rgba(0,0,0,0.3)';
+                            e.target.style.borderColor = 'rgba(255,255,255,0.1)';
                         }}
                     />
                     <button type="submit" style={{
@@ -102,56 +135,71 @@ export default function Home() {
                         right: '10px',
                         top: '50%',
                         transform: 'translateY(-50%)',
-                        background: 'var(--primary-color)',
+                        background: 'linear-gradient(45deg, #a970ff, #7b1fa2)',
                         border: 'none',
-                        borderRadius: '20px',
-                        padding: '8px 20px',
+                        borderRadius: '40px',
+                        padding: '12px 28px',
                         color: '#fff',
                         fontWeight: 'bold',
-                        cursor: 'pointer'
-                    }}>
+                        cursor: 'pointer',
+                        fontSize: '15px',
+                        boxShadow: '0 4px 12px rgba(169, 112, 255, 0.4)',
+                        transition: 'transform 0.2s ease'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-50%) scale(1.05)'}
+                    onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(-50%) scale(1)'}
+                    >
                         검색
                     </button>
                 </form>
             </section>
 
-            {/* 2. 메인 콘텐츠 (1:1 비율 그리드) */}
-            <div className="dashboard-grid" style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr', // 정확히 1:1 비율 강제
-                gap: '30px',
-                alignItems: 'start'
-            }}>
+            {/* 2. 메인 콘텐츠 (상하 배치 그리드) */}
+            <div style={{ padding: '0 20px 60px 20px' }}>
 
-                {/* [왼쪽] 편의성 도구 */}
-                <section className="content-card" style={{ padding: '30px', height: '100%', minHeight:'500px' }}>
-                    <div style={{ marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px', borderBottom:'1px solid #333', paddingBottom:'15px' }}>
-                        <span style={{ fontSize: '22px' }}>🛠️</span>
-                        <h3 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0, color:'#fff' }}>편의성 도구</h3>
+                {/* [섹션 1] 편의성 도구 */}
+                <div style={{ marginBottom: '60px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '25px', paddingLeft: '10px' }}>
+                        <span style={{ fontSize: '28px', filter: 'grayscale(0.2)' }}>🛠️</span>
+                        <div>
+                            <h3 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0, color:'#fff' }}>편의성 도구</h3>
+                            <p style={{ margin: '5px 0 0 0', fontSize: '14px', color: '#888' }}>로스트아크 플레이에 유용한 계산기 모음</p>
+                        </div>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', 
+                        gap: '25px' 
+                    }}>
                         {utilityTools.map((tool) => (
                             <MenuCard
                                 key={tool.name}
                                 title={tool.name}
                                 icon={tool.icon}
                                 desc={tool.desc}
-                                color={tool.color} // 개별 포인트 컬러 적용
+                                color={tool.color}
                                 onClick={() => navigate(tool.path)}
                             />
                         ))}
                     </div>
-                </section>
+                </div>
 
-                {/* [오른쪽] 시세 정보 바로가기 */}
-                <section className="content-card" style={{ padding: '30px', height: '100%', minHeight:'500px' }}>
-                    <div style={{ marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px', borderBottom:'1px solid #333', paddingBottom:'15px' }}>
-                        <span style={{ fontSize: '22px' }}>📊</span>
-                        <h3 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0, color:'#fff' }}>시세 정보 바로가기</h3>
+                {/* [섹션 2] 시세 정보 바로가기 */}
+                <div style={{ marginBottom: '40px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '25px', paddingLeft: '10px' }}>
+                        <span style={{ fontSize: '28px', filter: 'grayscale(0.2)' }}>📊</span>
+                        <div>
+                            <h3 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0, color:'#fff' }}>시세 정보 바로가기</h3>
+                            <p style={{ margin: '5px 0 0 0', fontSize: '14px', color: '#888' }}>실시간 거래소 및 경매장 시세 확인</p>
+                        </div>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', 
+                        gap: '25px' 
+                    }}>
                         {marketShortcuts.map((item) => (
                             <MenuCard
                                 key={item.id}
@@ -163,7 +211,7 @@ export default function Home() {
                             />
                         ))}
                     </div>
-                </section>
+                </div>
 
             </div>
         </div>

@@ -18,6 +18,8 @@ import AdvancedReforgePage from './pages/tools/AdvancedReforgePage';
 import AbydosPage from './pages/tools/AbydosPage';
 import AbydosCraftPage from './pages/tools/AbydosCraftPage';
 import AuctionPage from './pages/tools/AuctionPage';
+// 🌟 1. 새로 만든 페이지 import 추가
+import StatCalculatorPage from './pages/tools/StatCalculatorPage';
 
 function App() {
     return (
@@ -36,18 +38,18 @@ function App() {
                     {/* 시세 정보 라우팅 */}
                     <Route path="/market/:categoryId" element={<MarketPage />} />
                     <Route path="/market/detail/:itemName" element={<ItemDetailPage />} />
-                    {/* /market 접근 시 재련 재료 탭으로 리다이렉트 */}
                     <Route path="/market" element={<Navigate to="/market/reforge" replace />} />
 
                     {/* 도구 라우팅 */}
-                    {/* /tools 접근 시 일반 재련으로 리다이렉트 */}
                     <Route path="/tools" element={<Navigate to="/tools/general" replace />} />
 
-                    <Route path="/tools/general" element={<GeneralReforgePage />} />      {/* 일반 재련 */}
-                    <Route path="/tools/advanced" element={<AdvancedReforgePage />} />    {/* 상급 재련 */}
-                    <Route path="/tools/abydos" element={<AbydosPage />} />               {/* 아비도스 쌀산기 */}
-                    <Route path="/tools/craft" element={<AbydosCraftPage />} />           {/* 아비도스 제작 계산기 */}
-                    <Route path="/tools/auction" element={<AuctionPage />} />             {/* 경매 계산기 */}
+                    <Route path="/tools/general" element={<GeneralReforgePage />} />
+                    <Route path="/tools/advanced" element={<AdvancedReforgePage />} />
+                    <Route path="/tools/abydos" element={<AbydosPage />} />
+                    <Route path="/tools/craft" element={<AbydosCraftPage />} />
+                    <Route path="/tools/auction" element={<AuctionPage />} />
+                    {/* 🌟 2. 라우터 경로 추가! */}
+                    <Route path="/tools/stat-calc" element={<StatCalculatorPage />} />
 
                     {/* 잘못된 도구 경로는 일반 재련으로 */}
                     <Route path="/tools/*" element={<Navigate to="/tools/general" replace />} />

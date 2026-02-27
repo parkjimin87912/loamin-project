@@ -11,6 +11,8 @@ export default function ToolsHeader() {
         { name: '아비도스 쌀산기', path: '/tools/abydos' },
         { name: '아비도스 제작', path: '/tools/craft' },
         { name: '경매 계산기', path: '/tools/auction' },
+        // 🌟 여기에 새 메뉴 탭 추가!
+        { name: '스탯 계산기 (뭉가/음돌)', path: '/tools/stat-calc' },
     ];
 
     return (
