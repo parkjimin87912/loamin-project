@@ -15,12 +15,12 @@ export default function Home() {
 
     // [왼쪽] 편의 도구 데이터
     const utilityTools = [
-        { name: "스탯 계산기", icon: "📊", path: "/tools/stat-calc", desc: "뭉가/음돌 최적 스탯 분배", color: "#81c784" },
         { name: "일반 재련", icon: "🔨", path: "/tools/general", desc: "기본 재련 확률/비용 계산", color: "#ffb74d" },
         { name: "상급 재련", icon: "✨", path: "/tools/advanced", desc: "상급 재련 최적화 계산", color: "#ffd54f" },
         { name: "아비도스 쌀산기", icon: "🎲", path: "/tools/abydos", desc: "제작 이득/손해 자동 분석", color: "#e0e0e0" },
         { name: "아비도스 제작 계산기", icon: "🏭", path: "/tools/craft", desc: "보유 재료 기반 최적 교환", color: "#90caf9" },
         { name: "경매 계산기", icon: "💰", path: "/tools/auction", desc: "경매 입찰 적정가 가이드", color: "#ffcc80" },
+        { name: "스탯 계산기", icon: "📊", path: "/tools/stat-calc", desc: "뭉가/음돌 최적 스탯 분배", color: "#81c784" },
     ];
 
     // [오른쪽] 시세 정보 데이터

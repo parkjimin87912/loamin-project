@@ -17,7 +17,8 @@ export default function AbydosPage() {
     const navigate = useNavigate();
 
     // --- [상태 관리] ---
-    const [targetPrice, setTargetPrice] = useState(85);
+    const [targetPriceNormal, setTargetPriceNormal] = useState(0); // 일반 아비도스 가격
+    const [targetPriceAdvanced, setTargetPriceAdvanced] = useState(0); // 상급 아비도스 가격
     const [feeReduction, setFeeReduction] = useState("0"); // 수수료 감소율 (기본 0%)
     const [greatSuccess, setGreatSuccess] = useState(0); // 대성공 확률 증가량 (기본 0)
     const [selectedMethod, setSelectedMethod] = useState<string | null>(null); // 선택된 제작 방법
@@ -36,7 +37,7 @@ export default function AbydosPage() {
     useEffect(() => {
         const fetchMarketPrices = async () => {
             try {
-                // 1. 아비도스 융화 재료 가격
+                // 1. 융화 재료 가격 (일반/상급 모두 조회)
                 const [matResponse, subMatResponse] = await Promise.all([
                     axios.get('http://localhost:8080/api/v1/market/items', {
                         params: { category: 'reforge', subCategory: '재련 재료', tier: 4 }
@@ -51,11 +52,11 @@ export default function AbydosPage() {
                     ...(Array.isArray(subMatResponse.data) ? subMatResponse.data : [])
                 ];
 
-                const abydosItem = allReforgeItems.find((item: any) => item.name === '아비도스 융화 재료');
-                if (abydosItem) {
-                    const price = abydosItem.recentPrice > 0 ? abydosItem.recentPrice : abydosItem.minPrice;
-                    setTargetPrice(price);
-                }
+                const normalItem = allReforgeItems.find((item: any) => item.name === '아비도스 융화 재료');
+                const advancedItem = allReforgeItems.find((item: any) => item.name === '상급 아비도스 융화 재료');
+
+                if (normalItem) setTargetPriceNormal(normalItem.recentPrice > 0 ? normalItem.recentPrice : normalItem.minPrice);
+                if (advancedItem) setTargetPriceAdvanced(advancedItem.recentPrice > 0 ? advancedItem.recentPrice : advancedItem.minPrice);
 
                 // 2. 생활 재료 가격 (전체 조회 후 필터링)
                 const categories: { id: LifeCategory, sub: string }[] = [
@@ -116,27 +117,39 @@ export default function AbydosPage() {
     };
 
     // --- [이득 계산 로직] ---
-    const calculateProfit = (group: MaterialGroup) => {
-        // 🌟 400개 제작 기준 (10개씩 40회 제작)
-        // 재료 소모량: 일반 3440개, 고급 1800개, 아비도스 1320개
-        
+    const calculateProfit = (group: MaterialGroup, type: 'normal' | 'advanced') => {
         const mat0 = group.materials[0]; // 일반
         const mat1 = group.materials[1]; // 고급 (2티어)
         const mat3 = group.materials[3]; // 4티어 (아비도스)
 
+        // 🌟 400개 제작 기준 재료 소모량 (40회 제작)
+        let count0, count1, count3;
+
+        if (type === 'advanced') {
+            // 상급 아비도스 (1회: 일반 112, 고급 59, 아비도스 43)
+            // 40회: 일반 4480, 고급 2360, 아비도스 1720
+            count0 = 4480;
+            count1 = 2360;
+            count3 = 1720;
+        } else {
+            // 일반 아비도스 (1회: 일반 86, 고급 45, 아비도스 33)
+            // 40회: 일반 3440, 고급 1800, 아비도스 1320
+            count0 = 3440;
+            count1 = 1800;
+            count3 = 1320;
+        }
+
         // 가격은 100개 단위이므로 /100 처리
-        const cost0 = (3440 / 100) * mat0.price;
-        const cost1 = (1800 / 100) * mat1.price;
-        const cost3 = (1320 / 100) * mat3.price;
+        const cost0 = (count0 / 100) * mat0.price;
+        const cost1 = (count1 / 100) * mat1.price;
+        const cost3 = (count3 / 100) * mat3.price;
 
         const totalMatCost = cost0 + cost1 + cost3;
 
         // 🌟 1. 재료 그대로 판매 시 수익 (A)
-        // 수수료 5% 제외
         const sellMaterialProfit = Math.floor(totalMatCost * 0.95);
 
         // 🌟 제작 비용 (16000골드) + 수수료 감소 적용
-        // 40회 제작 * 400골드 = 16,000골드
         const baseGoldCost = 16000;
         const reductionRate = Number(feeReduction) / 100;
         const finalGoldCost = baseGoldCost * (1 - reductionRate);
@@ -144,37 +157,27 @@ export default function AbydosPage() {
         const totalCost = totalMatCost + finalGoldCost;
 
         // 🌟 기대 매출 (대성공 확률 적용)
-        // 제작 횟수: 40회
         const craftCount = 40;
-        // 1회 기본 생산량: 10개
         const baseOutputPerCraft = 10;
-        
-        // 대성공 확률: 기본 5% * (1 + 추가/100)
         const realGreatSuccessChancePercent = 5 * (1 + greatSuccess / 100);
         const p = realGreatSuccessChancePercent / 100;
-
-        // 1회 제작 시 기대 생산량
-        // 일반 성공(1-p): 10개
-        // 대성공(p): 20개 (대성공 시 2배 획득)
-        // 기대값 = 10(1-p) + 20p = 10 - 10p + 20p = 10 + 10p = 10(1+p)
         const expectedOutputPerCraft = baseOutputPerCraft * (1 + p);
-
-        // 총 기대 생산량 (40회 반복)
         const totalExpectedOutput = expectedOutputPerCraft * craftCount;
 
+        const targetPrice = type === 'advanced' ? targetPriceAdvanced : targetPriceNormal;
         const grossIncome = targetPrice * totalExpectedOutput;
         const netIncome = grossIncome * 0.95; // 거래소 수수료 5%
 
+        // 최종 이익 (제작 판매 순이익)
+        const profit = Math.floor(netIncome - totalCost);
+        
         // 🌟 2. 제작 후 판매 시 수익 (B) - 재료 보유 가정
-        // (완제품 판매액 * 0.95) - 제작비용
-        // * 재료비는 이미 가지고 있으므로 차감하지 않음 (A와 비교하기 위해)
         const craftSellProfit = Math.floor(netIncome - finalGoldCost);
 
         // 🌟 3. 제작 vs 판매 차액 (B - A)
         const diff = craftSellProfit - sellMaterialProfit;
 
         // 4. (참고용) 재료를 사서 제작했을 때의 순수익 (기존 profit)
-        // 이건 "구매 -> 제작 -> 판매" 루트의 이득 (랭킹 정렬용)
         const buyAndCraftProfit = Math.floor(netIncome - totalCost);
 
         return { 
@@ -182,26 +185,39 @@ export default function AbydosPage() {
             totalExpectedOutput, 
             totalCost, 
             netIncome,
-            sellMaterialProfit, // A
-            craftSellProfit,    // B
-            diff,               // B - A
+            sellMaterialProfit, 
+            craftSellProfit,    
+            diff,               
             details: {
-                mat0: { name: mat0.name, count: 3440, cost: cost0 },
-                mat1: { name: mat1.name, count: 1800, cost: cost1 },
-                mat3: { name: mat3.name, count: 1320, cost: cost3 },
+                mat0: { name: mat0.name, count: count0, cost: cost0 },
+                mat1: { name: mat1.name, count: count1, cost: cost1 },
+                mat3: { name: mat3.name, count: count3, cost: cost3 },
                 goldCost: finalGoldCost,
                 baseGoldCost
-            }
+            },
+            type // 제작 타입 정보 추가
         };
     };
 
-    const results = lifeMaterials.map(group => {
-        const calc = calculateProfit(group);
-        return {
-            ...group,
-            ...calc,
-            methodName: group.name.replace(' 재료', '') + ' 제작'
-        };
+    // 🌟 모든 경우의 수 계산 (6개 생활 * 2가지 제작법 = 12개)
+    const results = lifeMaterials.flatMap(group => {
+        const normalCalc = calculateProfit(group, 'normal');
+        const advancedCalc = calculateProfit(group, 'advanced');
+
+        return [
+            {
+                ...group,
+                ...normalCalc,
+                methodName: `[일반] ${group.name.replace(' 재료', '')} 제작`,
+                id: `${group.id}_normal`
+            },
+            {
+                ...group,
+                ...advancedCalc,
+                methodName: `[상급] ${group.name.replace(' 재료', '')} 제작`,
+                id: `${group.id}_advanced`
+            }
+        ];
     }).sort((a, b) => b.profit - a.profit);
 
     // 실제 대성공 확률 계산 (표시용)
@@ -270,12 +286,18 @@ export default function AbydosPage() {
                 {/* 재료 가격 입력 */}
                 <div className="content-card" style={{ marginBottom: '20px' }}>
                     <div className="card-header"><span className="card-title">💰 생활 재료 가격 (100개 단위)</span></div>
-                    {/* 판매 아이템 */}
-                    <div style={{ background: 'var(--bg-input)', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid var(--border-color)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', fontWeight: 'bold', color: '#4dabf7' }}>💎 판매 아이템 (필수)</div>
-                        <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    {/* 판매 아이템 (일반/상급 동시 표시) */}
+                    <div style={{ background: 'var(--bg-input)', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid var(--border-color)', display: 'flex', gap: '30px', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#4dabf7' }}>💎 판매 아이템 (필수)</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                             <span style={{ color: '#fff', fontSize: '13px' }}>🟠 아비도스 융화 재료</span>
-                            <input type="number" className="price-input" value={targetPrice} onChange={(e) => setTargetPrice(Number(e.target.value))} />
+                            <input type="number" className="price-input" value={targetPriceNormal} onChange={(e) => setTargetPriceNormal(Number(e.target.value))} />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <span style={{ color: '#a970ff', fontSize: '13px' }}>🟣 상급 아비도스 융화 재료</span>
+                            <input type="number" className="price-input" value={targetPriceAdvanced} onChange={(e) => setTargetPriceAdvanced(Number(e.target.value))} />
                         </div>
                     </div>
                     {/* 재료 그리드 */}
@@ -288,7 +310,7 @@ export default function AbydosPage() {
                                         <div key={mIdx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-input)', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
                                             <span style={{ fontSize: '13px', color: '#e1e1e8' }}>{mat.name}</span>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                                <input type="number" className="price-input" style={{ width: '70px', padding: '4px 0px' }} value={mat.price} onChange={(e) => handleMaterialPriceChange(group.id, mIdx, Number(e.target.value))} />
+                                                <input type="number" className="price-input" style={{ width: '70px', padding: '4px 8px' }} value={mat.price} onChange={(e) => handleMaterialPriceChange(group.id, mIdx, Number(e.target.value))} />
                                                 <span style={{ fontSize: '11px', color: '#666' }}>G</span>
                                             </div>
                                         </div>
@@ -312,7 +334,7 @@ export default function AbydosPage() {
                             >
                                 <td style={{ fontWeight: 'bold' }}>{idx + 1}위</td>
                                 <td>
-                                    <div style={{fontWeight:'bold'}}>{item.methodName}</div>
+                                    <div style={{fontWeight:'bold', color: item.type === 'advanced' ? '#a970ff' : '#fff'}}>{item.methodName}</div>
                                     <div style={{fontSize:'11px', color:'#aaa', marginTop:'4px'}}>예상 생산량: {item.totalExpectedOutput.toFixed(1)}개</div>
                                 </td>
                                 <td style={{ fontSize: '12px', color: '#ccc' }}>
@@ -398,7 +420,7 @@ export default function AbydosPage() {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                         <span>판매 단가</span>
-                                        <span>{targetPrice} G</span>
+                                        <span>{detailData.type === 'advanced' ? targetPriceAdvanced : targetPriceNormal} G</span>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                         <span>예상 생산량 (대성공 포함)</span>
@@ -406,11 +428,11 @@ export default function AbydosPage() {
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                         <span>총 매출액</span>
-                                        <span>{Math.round(targetPrice * detailData.totalExpectedOutput).toLocaleString()} G</span>
+                                        <span>{Math.round((detailData.type === 'advanced' ? targetPriceAdvanced : targetPriceNormal) * detailData.totalExpectedOutput).toLocaleString()} G</span>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef5350' }}>
                                         <span>거래소 수수료 (5%)</span>
-                                        <span>-{Math.round(targetPrice * detailData.totalExpectedOutput * 0.05).toLocaleString()} G</span>
+                                        <span>-{Math.round((detailData.type === 'advanced' ? targetPriceAdvanced : targetPriceNormal) * detailData.totalExpectedOutput * 0.05).toLocaleString()} G</span>
                                     </div>
                                     <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '15px', color: detailData.profit > 0 ? '#66bb6a' : '#ef5350' }}>
                                         <span>최종 순이익 (재료 구매 시)</span>
