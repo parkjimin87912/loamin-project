@@ -141,7 +141,7 @@ export default function CalendarPage() {
                         {category}
                     </h2>
                     
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
+                    <div className="calendar-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
                         {groupedData[category].map((item, index) => {
                             const nextTimeStr = item.startTimes[0];
                             const timeLeft = nextTimeStr ? getTimeLeft(nextTimeStr) : null;

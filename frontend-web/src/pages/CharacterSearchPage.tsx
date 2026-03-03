@@ -558,7 +558,7 @@ export default function CharacterSearchPage() {
             let options: string[] = [];
             let mainStat = "";
             let abilityEngravings: { name: string, level: number, isPenalty: boolean }[] = [];
-            let advancedReforge = 0; // 🌟 상급 재련 추가
+            let advancedReforge = 0;
 
             const stripHtml = (html: string) => html.replace(/<BR>|<br>/gi, '\n').replace(/<[^>]*>/g, '').trim();
 
@@ -655,7 +655,6 @@ export default function CharacterSearchPage() {
                         if (match && !mainStat) mainStat = `${stat} +${match[1]}`;
                     });
 
-                    // 🌟 상급 재련 추출 로직 추가
                     if (cleanText.includes("상급 재련")) {
                         const advMatch = cleanText.match(/상급\s*재련[^0-9]*(\d+)\s*단계/);
                         if (advMatch) {
@@ -675,7 +674,7 @@ export default function CharacterSearchPage() {
             );
             options = [...new Set(options)];
 
-            return {quality, options, mainStat, abilityEngravings, advancedReforge}; // 🌟 반환값에 추가
+            return {quality, options, mainStat, abilityEngravings, advancedReforge};
         } catch {
             return {quality: -1, options: [], mainStat: "", abilityEngravings: [], advancedReforge: 0};
         }
@@ -827,53 +826,27 @@ export default function CharacterSearchPage() {
                     return (
                         <div key={idx} style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
                             <div style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                padding: '6px 6px',
-                                borderRadius: '8px',
-                                border: `1px solid ${style.border}`,
-                                background: 'var(--bg-card)',
-                                color: style.color,
-                                whiteSpace: 'nowrap'
+                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                padding: '6px 6px', borderRadius: '8px', border: `1px solid ${style.border}`,
+                                background: 'var(--bg-card)', color: style.color, whiteSpace: 'nowrap'
                             }}>
                                 <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
                                     <div style={{
-                                        width: '16px',
-                                        height: '16px',
-                                        flexShrink: 0,
-                                        overflow: 'hidden',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center'
+                                        width: '16px', height: '16px', flexShrink: 0, overflow: 'hidden',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
                                     }}>
-                                        <img src={iconUrl} alt={point.name}
-                                             style={{width: '100%', height: '100%', objectFit: 'contain'}}/>
+                                        <img src={iconUrl} alt={point.name} style={{width: '100%', height: '100%', objectFit: 'contain'}}/>
                                     </div>
-                                    <span style={{
-                                        fontSize: '11px',
-                                        fontWeight: 'bold',
-                                        letterSpacing: '-0.5px'
-                                    }}>{point.name}</span>
+                                    <span style={{ fontSize: '11px', fontWeight: 'bold', letterSpacing: '-0.5px' }}>{point.name}</span>
                                 </div>
                                 <span style={{
-                                    fontSize: '11px',
-                                    fontWeight: 'bold',
-                                    background: style.bg,
-                                    padding: '2px 4px',
-                                    borderRadius: '4px',
-                                    color: style.color
+                                    fontSize: '11px', fontWeight: 'bold', background: style.bg,
+                                    padding: '2px 4px', borderRadius: '4px', color: style.color
                                 }}>
                                     {point.value}
                                 </span>
                             </div>
-                            <div style={{
-                                textAlign: 'center',
-                                fontSize: '11px',
-                                color: '#888',
-                                whiteSpace: 'nowrap',
-                                letterSpacing: '-0.5px'
-                            }}>
+                            <div style={{ textAlign: 'center', fontSize: '11px', color: '#888', whiteSpace: 'nowrap', letterSpacing: '-0.5px' }}>
                                 {point.rank}랭크 {point.level}레벨
                             </div>
                         </div>
@@ -894,9 +867,7 @@ export default function CharacterSearchPage() {
         }, {} as Record<string, number>);
 
         const effectsByTypeAndTier: Record<string, Record<number, typeof effects>> = {
-            '진화': {},
-            '깨달음': {},
-            '도약': {}
+            '진화': {}, '깨달음': {}, '도약': {}
         };
 
         if (effects) {
@@ -933,35 +904,18 @@ export default function CharacterSearchPage() {
         };
 
         return (
-            <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '20px' }}>
+            <div className="ark-passive-container">
                 {title && (
-                    <div style={{
-                        textAlign: 'center',
-                        marginBottom: '30px',
-                        fontSize: '28px',
-                        fontWeight: 'bold',
-                        color: '#ffb74d',
-                        textShadow: '0 0 10px rgba(255, 183, 77, 0.3)'
-                    }}>
+                    <div className="ark-passive-title">
                         {title}
                     </div>
                 )}
 
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    gap: '20px',
-                    marginBottom: '30px'
-                }}>
+                {/* 🌟 수정: 인라인 스타일 제거하고 클래스(ark-passive-summary) 적용 */}
+                <div className="ark-passive-summary">
                     {['진화', '깨달음', '도약'].map(type => (
-                        <div key={type} style={{
-                            background: 'var(--bg-card)',
+                        <div key={type} className="ark-passive-summary-item" style={{
                             border: `1px solid ${getTypeColor(type)}`,
-                            borderRadius: '12px',
-                            padding: '15px 25px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px',
                             boxShadow: `0 0 10px ${getTypeBg(type)}`
                         }}>
                             <img
@@ -972,28 +926,18 @@ export default function CharacterSearchPage() {
                                 style={{ width: '24px', height: '24px' }}
                             />
                             <span style={{ fontWeight: 'bold', color: getTypeColor(type), fontSize: '18px' }}>{type}</span>
-                            <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#fff' }}>{pointSummary[type] || 0}</span>
+                            <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#fff', marginLeft: 'auto' }}>{pointSummary[type] || 0}</span>
                         </div>
                     ))}
                 </div>
 
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: '20px',
-                    alignItems: 'start'
-                }}>
+                {/* 🌟 수정: 클래스(ark-passive-list) 적용 */}
+                <div className="ark-passive-list">
                     {['진화', '깨달음', '도약'].map(type => {
                         const tiers = Object.keys(effectsByTypeAndTier[type]).map(Number).sort((a, b) => a - b);
 
                         return (
-                            <div key={type} style={{
-                                background: 'var(--bg-card)',
-                                borderRadius: '12px',
-                                padding: '20px',
-                                border: `1px solid ${getTypeColor(type)}`,
-                                minHeight: '200px'
-                            }}>
+                            <div key={type} className="ark-passive-card" style={{ border: `1px solid ${getTypeColor(type)}` }}>
                                 <h3 style={{
                                     color: getTypeColor(type),
                                     borderBottom: `1px solid ${getTypeColor(type)}`,
@@ -1020,20 +964,12 @@ export default function CharacterSearchPage() {
                                             <div key={tier}>
                                                 {tier !== 99 && (
                                                     <div style={{
-                                                        fontSize: '14px',
-                                                        color: '#aaa',
-                                                        marginBottom: '8px',
-                                                        fontWeight: 'bold',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '6px'
+                                                        fontSize: '14px', color: '#aaa', marginBottom: '8px',
+                                                        fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px'
                                                     }}>
                                                         <span style={{
-                                                            display: 'inline-block',
-                                                            width: '4px',
-                                                            height: '12px',
-                                                            background: getTypeColor(type),
-                                                            borderRadius: '2px'
+                                                            display: 'inline-block', width: '4px', height: '12px',
+                                                            background: getTypeColor(type), borderRadius: '2px'
                                                         }}></span>
                                                         Tier {tier}
                                                     </div>
@@ -1052,19 +988,12 @@ export default function CharacterSearchPage() {
                                                             <div key={idx} style={{
                                                                 background: getTypeBg(type),
                                                                 border: `1px solid ${getTypeColor(type)}`,
-                                                                borderRadius: '8px',
-                                                                padding: '10px',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '10px'
+                                                                borderRadius: '8px', padding: '10px',
+                                                                display: 'flex', alignItems: 'center', gap: '10px'
                                                             }}>
                                                                 <div style={{
-                                                                    width: '36px',
-                                                                    height: '36px',
-                                                                    borderRadius: '6px',
-                                                                    overflow: 'hidden',
-                                                                    border: '1px solid #000',
-                                                                    flexShrink: 0
+                                                                    width: '36px', height: '36px', borderRadius: '6px',
+                                                                    overflow: 'hidden', border: '1px solid #000', flexShrink: 0
                                                                 }}>
                                                                     <img src={effect.icon} alt={effect.name} style={{ width: '100%', height: '100%', objectFit: 'cover', background: '#000' }} />
                                                                 </div>
@@ -1200,12 +1129,8 @@ export default function CharacterSearchPage() {
 
         const renderEffectItem = (effect: ArkGridEffect, idx: number) => (
             <div key={idx} style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                background: 'rgba(255, 255, 255, 0.03)',
-                padding: '10px 15px',
-                borderRadius: '8px',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                background: 'rgba(255, 255, 255, 0.03)', padding: '10px 15px', borderRadius: '8px',
                 border: '1px solid rgba(255, 255, 255, 0.05)'
             }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -1217,23 +1142,14 @@ export default function CharacterSearchPage() {
         );
 
         return (
-            <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+            <div className="ark-grid-container">
                 {effects.length > 0 && (
-                    <div style={{
-                        background: 'var(--bg-card)',
-                        border: '1px solid var(--border-color)',
-                        borderRadius: '12px',
-                        padding: '20px',
-                        marginBottom: '20px'
-                    }}>
+                    <div className="ark-grid-summary-card">
                         <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>
                             아크 그리드 효과 합계
                         </h3>
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: '1fr 1fr',
-                            gap: '20px'
-                        }}>
+                        {/* 🌟 수정: 클래스(ark-grid-summary-inner) 적용 */}
+                        <div className="ark-grid-summary-inner">
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                 {leftEffects.map((e, i) => renderEffectItem(e, i))}
                                 {otherEffects.map((e, i) => renderEffectItem(e, i + leftEffects.length))}
@@ -1245,11 +1161,7 @@ export default function CharacterSearchPage() {
                     </div>
                 )}
 
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr',
-                    gap: '20px'
-                }}>
+                <div className="ark-grid-list">
                     {character.arkGrids.map((grid, idx) => {
                         const tooltipText = parseArkGridTooltip(grid.tooltip);
                         const effects = parseArkGridEffectsWithPoints(tooltipText);
@@ -1261,23 +1173,11 @@ export default function CharacterSearchPage() {
                         else if (grid.grade === "고대") coreGradeColor = '#e7b9ff';
 
                         return (
-                            <div key={idx} style={{
-                                background: 'var(--bg-card)',
-                                border: '1px solid var(--border-color)',
-                                borderRadius: '12px',
-                                padding: '15px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '15px'
-                            }}>
+                            <div key={idx} className="ark-grid-card">
                                 <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
                                     <div style={{
-                                        width: '48px',
-                                        height: '48px',
-                                        borderRadius: '8px',
-                                        overflow: 'hidden',
-                                        border: `1px solid ${coreGradeColor}`,
-                                        flexShrink: 0
+                                        width: '48px', height: '48px', borderRadius: '8px', overflow: 'hidden',
+                                        border: `1px solid ${coreGradeColor}`, flexShrink: 0
                                     }}>
                                         <img src={grid.icon} alt={grid.effectName} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
                                     </div>
@@ -1285,13 +1185,8 @@ export default function CharacterSearchPage() {
                                         <div style={{fontSize: '12px', color: coreGradeColor, marginBottom: '2px', fontWeight: 'bold'}}>{grid.coreType}</div>
                                         <div style={{fontSize: '16px', fontWeight: 'bold', color: coreGradeColor, marginBottom: '4px'}}>{grid.effectName}</div>
                                         <div style={{
-                                            display: 'inline-block',
-                                            background: 'rgba(255, 255, 255, 0.1)',
-                                            padding: '2px 8px',
-                                            borderRadius: '4px',
-                                            fontSize: '12px',
-                                            fontWeight: 'bold',
-                                            color: '#fff'
+                                            display: 'inline-block', background: 'rgba(255, 255, 255, 0.1)',
+                                            padding: '2px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', color: '#fff'
                                         }}>
                                             {grid.point}P
                                         </div>
@@ -1300,11 +1195,8 @@ export default function CharacterSearchPage() {
 
                                 {effects.length > 0 && (
                                     <div style={{
-                                        background: 'rgba(0, 0, 0, 0.2)',
-                                        borderRadius: '8px',
-                                        padding: '10px',
-                                        fontSize: '13px',
-                                        lineHeight: '1.5'
+                                        background: 'rgba(0, 0, 0, 0.2)', borderRadius: '8px', padding: '10px',
+                                        fontSize: '13px', lineHeight: '1.5'
                                     }}>
                                         {effects.map((effect, i) => {
                                             const isActive = grid.point >= effect.requiredPoint;
@@ -1313,10 +1205,7 @@ export default function CharacterSearchPage() {
                                             const descText = pointMatch ? effect.text.substring(pointText.length) : effect.text;
 
                                             return (
-                                                <div key={i} style={{
-                                                    marginBottom: '4px',
-                                                    color: isActive ? '#ddd' : 'rgba(255, 255, 255, 0.3)',
-                                                }}>
+                                                <div key={i} style={{ marginBottom: '4px', color: isActive ? '#ddd' : 'rgba(255, 255, 255, 0.3)' }}>
                                                     {isActive && pointText ? (
                                                         <span style={{color: '#FFD200', fontWeight: 'bold'}}>{pointText}</span>
                                                     ) : (
@@ -1331,36 +1220,25 @@ export default function CharacterSearchPage() {
 
                                 {grid.gems && grid.gems.length > 0 && (
                                     <div style={{
-                                        marginTop: '5px',
-                                        paddingTop: '10px',
-                                        borderTop: '1px solid rgba(255,255,255,0.1)',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '8px'
+                                        marginTop: '5px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.1)',
+                                        display: 'flex', flexDirection: 'column', gap: '8px'
                                     }}>
                                         <div style={{fontSize: '12px', fontWeight: 'bold', color: '#aaa'}}>장착된 젬</div>
-                                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '10px'}}>
+                                        {/* 🌟 수정: 클래스(ark-grid-gem-list) 적용 */}
+                                        <div className="ark-grid-gem-list">
                                             {grid.gems.map((gem, gIdx) => {
                                                 const gemEffect = parseArkGridGemTooltip(gem.tooltip);
                                                 const gemEffects = formatArkGridEffects(gemEffect);
 
                                                 return (
                                                     <div key={gIdx} style={{
-                                                        display: 'flex',
-                                                        gap: '10px',
-                                                        background: 'rgba(255,255,255,0.03)',
-                                                        padding: '8px',
-                                                        borderRadius: '6px',
-                                                        border: `1px solid ${getGradeColor(gem.grade)}`,
+                                                        display: 'flex', gap: '10px', background: 'rgba(255,255,255,0.03)',
+                                                        padding: '8px', borderRadius: '6px', border: `1px solid ${getGradeColor(gem.grade)}`,
                                                         alignItems: 'center'
                                                     }}>
                                                         <div style={{
-                                                            width: '32px',
-                                                            height: '32px',
-                                                            flexShrink: 0,
-                                                            borderRadius: '4px',
-                                                            overflow: 'hidden',
-                                                            border: '1px solid #333'
+                                                            width: '32px', height: '32px', flexShrink: 0, borderRadius: '4px',
+                                                            overflow: 'hidden', border: '1px solid #333'
                                                         }}>
                                                             <img src={gem.icon} alt="gem" style={{width: '100%', height: '100%', objectFit: 'cover'}} />
                                                         </div>
@@ -1399,13 +1277,9 @@ export default function CharacterSearchPage() {
         });
 
         return (
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
-                gap: '15px',
-                padding: '20px',
-                maxWidth: '1400px',
-                margin: '0 auto'
+            <div className="siblings-grid" style={{
+                display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                gap: '15px', padding: '20px', maxWidth: '1400px', margin: '0 auto'
             }}>
                 {sortedSiblings.map((sibling, idx) => (
                     <CharacterCard key={idx} sibling={sibling} onClick={handleRecentClick} />
@@ -1493,26 +1367,10 @@ export default function CharacterSearchPage() {
         });
 
         return (
-            <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '10px',
-                padding: '20px',
-                maxWidth: '1200px',
-                margin: '0 auto'
-            }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
                 <div style={{
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: '12px',
-                    padding: '15px',
-                    marginBottom: '10px',
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: '15px',
-                    justifyContent: 'center',
-                    fontSize: '14px',
-                    color: '#ddd'
+                    background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '15px',
+                    marginBottom: '10px', display: 'flex', flexWrap: 'wrap', gap: '15px', justifyContent: 'center', fontSize: '14px', color: '#ddd'
                 }}>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <span style={{ color: '#64b5f6', fontWeight: 'bold' }}>헤드어택</span>
@@ -1572,106 +1430,82 @@ export default function CharacterSearchPage() {
 
                     return (
                         <div key={idx} style={{
-                            background: 'var(--bg-card)',
-                            border: '1px solid var(--border-color)',
-                            borderRadius: '12px',
-                            padding: '15px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '10px'
+                            background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px',
+                            padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px'
                         }}>
-                            <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                                <div style={{position: 'relative', width: '48px', height: '48px'}}>
-                                    <img src={skill.icon} alt={skill.name} style={{width: '100%', height: '100%', borderRadius: '8px'}} />
-                                    <div style={{
-                                        position: 'absolute',
-                                        bottom: -5,
-                                        right: -5,
-                                        background: '#000',
-                                        color: '#fff',
-                                        fontSize: '12px',
-                                        padding: '2px 6px',
-                                        borderRadius: '4px',
-                                        border: '1px solid #333'
-                                    }}>{skill.level}</div>
-                                </div>
-                                <div>
-                                    <div style={{fontWeight: 'bold', color: '#fff', fontSize: '16px'}}>{skill.name}</div>
-                                    <div style={{fontSize: '12px', color: '#aaa'}}>{skill.type} {skill.isAwakening ? '[각성기]' : ''}</div>
-                                </div>
-
-                                {skill.runeName && (
-                                    <div style={{marginLeft: '20px', display: 'flex', alignItems: 'center', gap: '6px'}}>
-                                        <img src={skill.runeIcon} alt={skill.runeName} style={{width: '24px', height: '24px'}} />
-                                        <div style={{fontSize: '12px', color: getRuneColor(skill.runeGrade)}}>{skill.runeName}</div>
+                            <div className="skill-main-row">
+                                <div className="skill-icon-name">
+                                    <div style={{position: 'relative', width: '48px', height: '48px', flexShrink: 0}}>
+                                        <img src={skill.icon} alt={skill.name} style={{width: '100%', height: '100%', borderRadius: '8px'}} />
+                                        <div style={{
+                                            position: 'absolute', bottom: -5, right: -5, background: '#000', color: '#fff',
+                                            fontSize: '12px', padding: '2px 6px', borderRadius: '4px', border: '1px solid #333'
+                                        }}>{skill.level}</div>
                                     </div>
-                                )}
+                                    <div>
+                                        <div style={{fontWeight: 'bold', color: '#fff', fontSize: '16px'}}>{skill.name}</div>
+                                        <div style={{fontSize: '12px', color: '#aaa'}}>{skill.type} {skill.isAwakening ? '[각성기]' : ''}</div>
+                                    </div>
+                                </div>
 
-                                <div style={{ display: 'flex', gap: '6px', marginLeft: '20px', flexWrap: 'wrap' }}>
-                                    {attributes['Stagger'] && (
-                                        <span style={{ fontSize: '11px', background: 'rgba(255, 255, 255, 0.1)', padding: '2px 6px', borderRadius: '4px', color: '#ddd' }}>
-                                            무력화: <span style={{ color: '#fff', fontWeight: 'bold' }}>{attributes['Stagger']}</span>
-                                        </span>
+                                <div className="skill-meta-info">
+                                    {skill.runeName && (
+                                        <div style={{display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0}}>
+                                            <img src={skill.runeIcon} alt={skill.runeName} style={{width: '24px', height: '24px'}} />
+                                            <div style={{fontSize: '12px', color: getRuneColor(skill.runeGrade)}}>{skill.runeName}</div>
+                                        </div>
                                     )}
-                                    {attributes['Destruction'] && (
-                                        <span style={{ fontSize: '11px', background: 'rgba(255, 255, 255, 0.1)', padding: '2px 6px', borderRadius: '4px', color: '#ddd' }}>
-                                            파괴: <span style={{ color: '#fff', fontWeight: 'bold' }}>{attributes['Destruction']}</span>
-                                        </span>
-                                    )}
-                                    {attributes['Counter'] && (
-                                        <span style={{ fontSize: '11px', background: 'rgba(255, 193, 7, 0.2)', padding: '2px 6px', borderRadius: '4px', color: '#ffc107', fontWeight: 'bold' }}>
-                                            카운터
-                                        </span>
-                                    )}
-                                    {attributes['HeadAttack'] && (
-                                        <span style={{ fontSize: '11px', background: 'rgba(33, 150, 243, 0.2)', padding: '2px 6px', borderRadius: '4px', color: '#64b5f6', fontWeight: 'bold' }}>
-                                            헤드어택
-                                        </span>
-                                    )}
-                                    {attributes['BackAttack'] && (
-                                        <span style={{ fontSize: '11px', background: 'rgba(244, 67, 54, 0.2)', padding: '2px 6px', borderRadius: '4px', color: '#e57373', fontWeight: 'bold' }}>
-                                            백어택
-                                        </span>
-                                    )}
-                                    {attributes['SuperArmor'] && (
-                                        <span style={{ fontSize: '11px', background: 'rgba(156, 39, 176, 0.2)', padding: '2px 6px', borderRadius: '4px', color: '#ba68c8', fontWeight: 'bold' }}>
-                                            {attributes['SuperArmor']}
-                                        </span>
-                                    )}
+
+                                    <div className="skill-attributes">
+                                        {attributes['Stagger'] && (
+                                            <span style={{ fontSize: '11px', background: 'rgba(255, 255, 255, 0.1)', padding: '2px 6px', borderRadius: '4px', color: '#ddd', whiteSpace: 'nowrap' }}>
+                                                무력화: <span style={{ color: '#fff', fontWeight: 'bold' }}>{attributes['Stagger']}</span>
+                                            </span>
+                                        )}
+                                        {attributes['Destruction'] && (
+                                            <span style={{ fontSize: '11px', background: 'rgba(255, 255, 255, 0.1)', padding: '2px 6px', borderRadius: '4px', color: '#ddd', whiteSpace: 'nowrap' }}>
+                                                파괴: <span style={{ color: '#fff', fontWeight: 'bold' }}>{attributes['Destruction']}</span>
+                                            </span>
+                                        )}
+                                        {attributes['Counter'] && (
+                                            <span style={{ fontSize: '11px', background: 'rgba(255, 193, 7, 0.2)', padding: '2px 6px', borderRadius: '4px', color: '#ffc107', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                                                카운터
+                                            </span>
+                                        )}
+                                        {attributes['HeadAttack'] && (
+                                            <span style={{ fontSize: '11px', background: 'rgba(33, 150, 243, 0.2)', padding: '2px 6px', borderRadius: '4px', color: '#64b5f6', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                                                헤드어택
+                                            </span>
+                                        )}
+                                        {attributes['BackAttack'] && (
+                                            <span style={{ fontSize: '11px', background: 'rgba(244, 67, 54, 0.2)', padding: '2px 6px', borderRadius: '4px', color: '#e57373', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                                                백어택
+                                            </span>
+                                        )}
+                                        {attributes['SuperArmor'] && (
+                                            <span style={{ fontSize: '11px', background: 'rgba(156, 39, 176, 0.2)', padding: '2px 6px', borderRadius: '4px', color: '#ba68c8', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                                                {attributes['SuperArmor']}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
 
                                 {skillGems.length > 0 && (
-                                    <div style={{marginLeft: 'auto', display: 'flex', gap: '8px'}}>
+                                    <div className="skill-gems">
                                         {skillGems.map((gem, gIdx) => (
                                             <div key={gIdx} style={{
-                                                position: 'relative',
-                                                width: '36px',
-                                                height: '36px',
-                                                borderRadius: '4px',
-                                                overflow: 'hidden',
-                                                border: `1px solid ${getGradeColor(gem.grade)}`,
+                                                position: 'relative', width: '36px', height: '36px', borderRadius: '4px',
+                                                overflow: 'hidden', border: `1px solid ${getGradeColor(gem.grade)}`,
                                                 background: isDamageGem(gem) ? 'rgba(255, 87, 34, 0.15)' : 'rgba(33, 150, 243, 0.15)'
                                             }} title={gem.name}>
                                                 <img src={gem.icon} alt={gem.name} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
                                                 <div style={{
-                                                    position: 'absolute',
-                                                    bottom: 0,
-                                                    right: 0,
-                                                    background: 'rgba(0,0,0,0.7)',
-                                                    color: '#fff',
-                                                    fontSize: '10px',
-                                                    padding: '0 3px',
-                                                    borderRadius: '3px 0 0 0'
+                                                    position: 'absolute', bottom: 0, right: 0, background: 'rgba(0,0,0,0.7)',
+                                                    color: '#fff', fontSize: '10px', padding: '0 3px', borderRadius: '3px 0 0 0'
                                                 }}>{gem.level}</div>
                                                 <div style={{
-                                                    position: 'absolute',
-                                                    top: 0,
-                                                    left: 0,
-                                                    background: isDamageGem(gem) ? '#ff5722' : '#2196f3',
-                                                    color: '#fff',
-                                                    fontSize: '9px',
-                                                    padding: '0 2px',
-                                                    fontWeight: 'bold'
+                                                    position: 'absolute', top: 0, left: 0, background: isDamageGem(gem) ? '#ff5722' : '#2196f3',
+                                                    color: '#fff', fontSize: '9px', padding: '0 2px', fontWeight: 'bold'
                                                 }}>
                                                     {isDamageGem(gem) ? (gem.name.includes("겁화") ? "겁" : "멸") : (gem.name.includes("작열") ? "작" : "홍")}
                                                 </div>
@@ -1682,35 +1516,17 @@ export default function CharacterSearchPage() {
                             </div>
 
                             {!skill.isAwakening && skill.tripods && skill.tripods.length > 0 && (
-                                <div style={{display: 'flex', gap: '10px', marginTop: '5px'}}>
+                                <div className="skill-tripod-row">
                                     {skill.tripods.sort((a, b) => a.tier - b.tier).map((tripod, tIdx) => (
-                                        <div key={tIdx} style={{
-                                            flex: 1,
-                                            background: 'rgba(255,255,255,0.05)',
-                                            borderRadius: '6px',
-                                            padding: '8px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '8px'
-                                        }}>
-                                            <img src={tripod.icon} alt={tripod.name} style={{width: '24px', height: '24px', borderRadius: '4px'}} />
-                                            <div style={{display: 'flex', flexDirection: 'column'}}>
-                                                <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
-                                                    <span style={{
-                                                        fontSize: '10px',
-                                                        fontWeight: 'bold',
-                                                        color: '#fff',
-                                                        background: 'rgba(255, 255, 255, 0.2)',
-                                                        borderRadius: '50%',
-                                                        width: '14px',
-                                                        height: '14px',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        paddingBottom: '1px'
-                                                    }}>{tripod.slot}</span>
-                                                    <span style={{fontSize: '12px', color: '#ddd'}}>{tripod.name}</span>
-                                                </div>
+                                        <div key={tIdx} className="skill-tripod-item">
+                                            <img src={tripod.icon} alt={tripod.name} style={{width: '24px', height: '24px', borderRadius: '4px', flexShrink: 0}} />
+                                            <div style={{display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden'}}>
+                                                <span style={{
+                                                    fontSize: '10px', fontWeight: 'bold', color: '#fff', background: 'rgba(255, 255, 255, 0.2)',
+                                                    borderRadius: '50%', width: '14px', height: '14px', display: 'flex', alignItems: 'center',
+                                                    justifyContent: 'center', paddingBottom: '1px', flexShrink: 0
+                                                }}>{tripod.slot}</span>
+                                                <span style={{fontSize: '12px', color: '#ddd', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{tripod.name}</span>
                                             </div>
                                         </div>
                                     ))}
@@ -1740,7 +1556,6 @@ export default function CharacterSearchPage() {
         ?.filter(e => !e.name.includes("감소"))
         .slice(0, 5) || [];
 
-    // 🌟 1. 전투력 데이터 직접 추출 및 기본 스텟 분리 로직 추가
     const combatPowerStat = character?.stats?.find(s => s.type === '전투력');
     const displayCombatPower = character?.combatPower || character?.CombatPower || combatPowerStat?.value;
     const filteredStats = character?.stats?.filter(s => s.type !== '전투력') || [];
@@ -1758,72 +1573,38 @@ export default function CharacterSearchPage() {
             )}
 
             {character && (
-                <div className="content-card"
-                     style={{padding: '0', overflow: 'hidden', background: 'transparent', border: 'none'}}>
+                <div className="content-card" style={{padding: '0', overflow: 'hidden', background: 'transparent', border: 'none'}}>
 
-                    <div style={{
-                        display: 'flex',
-                        gap: '10px',
-                        marginBottom: '20px',
-                        borderBottom: '1px solid var(--border-color)',
-                        paddingBottom: '10px'
-                    }}>
+                    <div className="tools-header-container">
                         {tabs.map(tab => (
-                            <button
+                            <div
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
-                                style={{
-                                    padding: '10px 20px',
-                                    background: activeTab === tab ? 'var(--primary-color)' : 'transparent',
-                                    color: activeTab === tab ? '#fff' : '#aaa',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer',
-                                    fontWeight: 'bold',
-                                    fontSize: '16px'
-                                }}
+                                className={`tools-tab ${activeTab === tab ? 'active' : ''}`}
                             >
                                 {tab}
-                            </button>
+                            </div>
                         ))}
                     </div>
 
                     {activeTab === '전체' && (
-                        <div style={{
-                            background: 'rgba(0,0,0,0.3)',
-                            padding: '20px',
-                            borderRadius: '8px',
-                            marginBottom: '20px',
-                            display: 'flex',
-                            justifyContent: 'space-around',
-                            alignItems: 'center'
+                        <div className="character-summary" style={{
+                            background: 'rgba(0,0,0,0.3)', padding: '20px', borderRadius: '8px', marginBottom: '20px',
+                            display: 'flex', justifyContent: 'space-around', alignItems: 'center', flexWrap: 'wrap', gap: '15px'
                         }}>
                             <div style={{textAlign: 'center'}}>
                                 <div style={{fontSize: '14px', color: '#aaa', marginBottom: '5px'}}>아이템 레벨</div>
-                                <div style={{
-                                    fontSize: '24px',
-                                    fontWeight: 'bold',
-                                    color: '#ffb74d'
-                                }}>{character.itemMaxLevel || character.itemAvgLevel}</div>
+                                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ffb74d' }}>{character.itemMaxLevel || character.itemAvgLevel}</div>
                             </div>
-                            {/* 🌟 2. 추출한 displayCombatPower 렌더링하도록 변경 */}
                             {displayCombatPower && (
                                 <div style={{textAlign: 'center'}}>
                                     <div style={{fontSize: '14px', color: '#aaa', marginBottom: '5px'}}>전투력</div>
-                                    <div style={{
-                                        fontSize: '24px',
-                                        fontWeight: 'bold',
-                                        color: '#ba94ff'
-                                    }}>{displayCombatPower}</div>
+                                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ba94ff' }}>{displayCombatPower}</div>
                                 </div>
                             )}
                             <div style={{textAlign: 'center'}}>
                                 <div style={{fontSize: '14px', color: '#aaa', marginBottom: '5px'}}>전투 레벨</div>
-                                <div style={{
-                                    fontSize: '24px',
-                                    fontWeight: 'bold',
-                                    color: '#fff'
-                                }}>{character.characterLevel}</div>
+                                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#fff' }}>{character.characterLevel}</div>
                             </div>
                             <div style={{textAlign: 'center'}}>
                                 <div style={{fontSize: '14px', color: '#aaa', marginBottom: '5px'}}>서버</div>
@@ -1837,73 +1618,31 @@ export default function CharacterSearchPage() {
                     )}
 
                     {activeTab === '전체' && (
-                        <div style={{display: 'flex', gap: '20px', alignItems: 'flex-start'}}>
-                            <div style={{width: '390px', flexShrink: 0}}>
+                        <div className="character-detail-grid">
+                            <div className="left-column">
                                 <div style={{
-                                    position: 'relative',
-                                    height: '500px',
+                                    position: 'relative', height: '500px',
                                     background: 'url(' + character.characterImage + ') no-repeat center top / cover',
-                                    borderRadius: '12px',
-                                    overflow: 'hidden',
-                                    marginBottom: '20px',
-                                    border: '1px solid var(--border-color)'
+                                    borderRadius: '12px', overflow: 'hidden', marginBottom: '20px', border: '1px solid var(--border-color)'
                                 }}>
-                                    <div style={{
-                                        position: 'absolute',
-                                        bottom: 0,
-                                        left: 0,
-                                        right: 0,
-                                        padding: '20px',
-                                        background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)'
-                                    }}>
-                                        <div style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '8px',
-                                            marginBottom: '4px'
-                                        }}>
-                                            {character.titleIcon && <img src={character.titleIcon} alt="title icon"
-                                                                         style={{width: '24px', height: '24px'}}/>}
+                                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '20px', background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                            {character.titleIcon && <img src={character.titleIcon} alt="title icon" style={{width: '24px', height: '24px'}}/>}
                                             <div style={{color: '#aaa', fontSize: '14px'}}>{character.title}</div>
                                         </div>
-                                        <h2 style={{
-                                            margin: 0,
-                                            fontSize: '28px',
-                                            color: '#fff'
-                                        }}>{character.characterName}</h2>
+                                        <h2 style={{ margin: 0, fontSize: '28px', color: '#fff' }}>{character.characterName}</h2>
                                         <div style={{
-                                            marginTop: '8px',
-                                            display: 'inline-block',
-                                            background: 'var(--primary-color)',
-                                            padding: '4px 10px',
-                                            borderRadius: '4px',
-                                            fontSize: '14px',
-                                            color: '#fff'
+                                            marginTop: '8px', display: 'inline-block', background: 'var(--primary-color)',
+                                            padding: '4px 10px', borderRadius: '4px', fontSize: '14px', color: '#fff'
                                         }}>{character.characterClassName}</div>
                                     </div>
                                 </div>
 
-                                <div style={{
-                                    background: 'var(--bg-card)',
-                                    padding: '20px',
-                                    borderRadius: '12px',
-                                    border: '1px solid var(--border-color)'
-                                }}>
-                                    <h3 style={{
-                                        margin: '0 0 15px 0',
-                                        fontSize: '18px',
-                                        color: '#fff',
-                                        borderBottom: '1px solid rgba(255,255,255,0.1)',
-                                        paddingBottom: '10px'
-                                    }}>기본 특성</h3>
+                                <div style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                                    <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>기본 특성</h3>
                                     <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px'}}>
-                                        {/* 🌟 3. 상단에 표시한 전투력을 제외한 filteredStats 사용 */}
                                         {filteredStats.map((stat, idx) => (
-                                            <div key={idx} style={{
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                fontSize: '14px'
-                                            }}>
+                                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
                                                 <span style={{color: '#aaa'}}>{stat.type}</span>
                                                 <span style={{color: '#fff', fontWeight: 'bold'}}>{stat.value}</span>
                                             </div>
@@ -1911,70 +1650,27 @@ export default function CharacterSearchPage() {
                                     </div>
                                 </div>
 
-                                <div style={{
-                                    marginTop: '20px',
-                                    background: 'var(--bg-card)',
-                                    padding: '20px',
-                                    borderRadius: '12px',
-                                    border: '1px solid var(--border-color)'
-                                }}>
-                                    <h3 style={{
-                                        margin: '0 0 15px 0',
-                                        fontSize: '18px',
-                                        color: '#fff',
-                                        borderBottom: '1px solid rgba(255,255,255,0.1)',
-                                        paddingBottom: '10px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between'
-                                    }}>
+                                <div style={{ marginTop: '20px', background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                                    <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             <span>아크패시브</span>
                                             {character.arkPassive?.title && (
-                                                <span style={{ fontSize: '15px', color: '#ffb74d', fontWeight: 'bold' }}>
-                                                    {character.arkPassive.title}
-                                                </span>
+                                                <span style={{ fontSize: '15px', color: '#ffb74d', fontWeight: 'bold' }}>{character.arkPassive.title}</span>
                                             )}
                                         </div>
-                                        {character.arkPassive?.isArkPassive && <span style={{
-                                            fontSize: '12px',
-                                            background: '#ba94ff',
-                                            color: '#000',
-                                            padding: '2px 8px',
-                                            borderRadius: '4px',
-                                            fontWeight: 'bold'
-                                        }}>Active</span>}
+                                        {character.arkPassive?.isArkPassive && <span style={{ fontSize: '12px', background: '#ba94ff', color: '#000', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>Active</span>}
                                     </h3>
                                     {character.arkPassive && character.arkPassive.points && character.arkPassive.points.length > 0 ? (
                                         renderArkPassivePoints()
                                     ) : (
-                                        <div style={{
-                                            color: '#aaa',
-                                            fontSize: '14px',
-                                            textAlign: 'center',
-                                            padding: '10px 0'
-                                        }}>활성화된 아크패시브 포인트가 없습니다.</div>
+                                        <div style={{ color: '#aaa', fontSize: '14px', textAlign: 'center', padding: '10px 0' }}>활성화된 아크패시브 포인트가 없습니다.</div>
                                     )}
                                 </div>
 
-                                <div style={{
-                                    marginTop: '20px',
-                                    background: 'var(--bg-card)',
-                                    padding: '20px',
-                                    borderRadius: '12px',
-                                    border: '1px solid var(--border-color)'
-                                }}>
-                                    <h3 style={{
-                                        margin: '0 0 15px 0',
-                                        fontSize: '18px',
-                                        color: '#fff',
-                                        borderBottom: '1px solid rgba(255,255,255,0.1)',
-                                        paddingBottom: '10px'
-                                    }}>
-                                        아크 그리드
-                                    </h3>
+                                <div style={{ marginTop: '20px', background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                                    <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>아크 그리드</h3>
                                     {character.arkGrids && character.arkGrids.length > 0 ? (
-                                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '4px'}}>
+                                        <div className="left-ark-grid">
                                             {character.arkGrids.map((grid, idx) => {
                                                 let coreGradeColor = '#333';
                                                 if (grid.grade === "영웅") coreGradeColor = '#ba68c8';
@@ -1984,59 +1680,24 @@ export default function CharacterSearchPage() {
 
                                                 return (
                                                     <div key={idx} style={{
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        gap: '4px',
-                                                        background: 'rgba(255,255,255,0.03)',
-                                                        padding: '8px 2px',
-                                                        borderRadius: '8px',
-                                                        alignItems: 'center',
-                                                        height: '100%'
+                                                        display: 'flex', flexDirection: 'column', gap: '4px', background: 'rgba(255,255,255,0.03)',
+                                                        padding: '8px 2px', borderRadius: '8px', alignItems: 'center', height: '100%'
                                                     }}>
                                                         <div style={{
-                                                            width: '36px',
-                                                            height: '36px',
-                                                            borderRadius: '6px',
-                                                            overflow: 'hidden',
-                                                            border: `1px solid ${coreGradeColor}`,
-                                                            flexShrink: 0
+                                                            width: '36px', height: '36px', borderRadius: '6px', overflow: 'hidden',
+                                                            border: `1px solid ${coreGradeColor}`, flexShrink: 0
                                                         }}>
-                                                            <img src={grid.icon} alt={grid.effectName}
-                                                                 style={{width: '100%', height: '100%', objectFit: 'cover'}}/>
+                                                            <img src={grid.icon} alt={grid.effectName} style={{width: '100%', height: '100%', objectFit: 'cover'}}/>
                                                         </div>
-                                                        <div style={{
-                                                            display: 'flex',
-                                                            flexDirection: 'column',
-                                                            alignItems: 'center',
-                                                            gap: '3px',
-                                                            width: '100%',
-                                                            flex: 1
-                                                        }}>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', width: '100%', flex: 1 }}>
                                                             <div style={{
-                                                                fontSize: '11px',
-                                                                fontWeight: 'bold',
-                                                                color: coreGradeColor,
-                                                                textAlign: 'center',
-                                                                lineHeight: '1.2',
-                                                                width: '100%',
-                                                                wordBreak: 'keep-all',
-                                                                display: '-webkit-box',
-                                                                WebkitLineClamp: 2,
-                                                                WebkitBoxOrient: 'vertical',
-                                                                overflow: 'hidden',
-                                                                flex: 1
+                                                                fontSize: '11px', fontWeight: 'bold', color: coreGradeColor, textAlign: 'center',
+                                                                lineHeight: '1.2', width: '100%', wordBreak: 'keep-all', display: '-webkit-box',
+                                                                WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', flex: 1
                                                             }}>
                                                                 {grid.effectName}
                                                             </div>
-                                                            <div style={{
-                                                                fontSize: '10px',
-                                                                fontWeight: 'bold',
-                                                                color: '#fff',
-                                                                background: 'rgba(0,0,0,0.5)',
-                                                                padding: '2px 6px',
-                                                                borderRadius: '8px',
-                                                                marginTop: 'auto'
-                                                            }}>
+                                                            <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#fff', background: 'rgba(0,0,0,0.5)', padding: '2px 6px', borderRadius: '8px', marginTop: 'auto' }}>
                                                                 {grid.point}P
                                                             </div>
                                                         </div>
@@ -2045,40 +1706,14 @@ export default function CharacterSearchPage() {
                                             })}
                                         </div>
                                     ) : (
-                                        <div style={{
-                                            color: '#aaa',
-                                            fontSize: '14px',
-                                            textAlign: 'center',
-                                            padding: '10px 0'
-                                        }}>
-                                            장착된 아크 그리드가 없습니다.
-                                        </div>
+                                        <div style={{ color: '#aaa', fontSize: '14px', textAlign: 'center', padding: '10px 0' }}>장착된 아크 그리드가 없습니다.</div>
                                     )}
                                 </div>
 
-                                <div style={{
-                                    marginTop: '20px',
-                                    background: 'var(--bg-card)',
-                                    padding: '16px',
-                                    borderRadius: '12px',
-                                    border: '1px solid var(--border-color)'
-                                }}>
-                                    <div style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        marginBottom: '12px',
-                                        borderBottom: '1px solid rgba(255,255,255,0.05)',
-                                        paddingBottom: '12px'
-                                    }}>
+                                <div style={{ marginTop: '20px', background: 'var(--bg-card)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '12px' }}>
                                         <h3 style={{margin: 0, fontSize: '16px', color: '#fff', fontWeight: 'bold'}}>각인</h3>
-                                        <div style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '12px',
-                                            fontSize: '12px',
-                                            color: '#aaa'
-                                        }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px', color: '#aaa' }}>
                                             <span>총 {activeEngravings.length}개</span>
                                         </div>
                                     </div>
@@ -2096,68 +1731,23 @@ export default function CharacterSearchPage() {
 
                                                 return (
                                                     <div key={idx} style={{
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '6px',
-                                                        background: 'rgba(255,255,255,0.03)',
-                                                        padding: '6px 12px',
-                                                        borderRadius: '9999px',
-                                                        transition: 'all 0.2s ease',
-                                                        cursor: 'pointer'
+                                                        display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.03)',
+                                                        padding: '6px 12px', borderRadius: '9999px', transition: 'all 0.2s ease', cursor: 'pointer'
                                                     }}
-                                                         onMouseEnter={(e) => {
-                                                             e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                                                             e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.2)';
-                                                         }}
-                                                         onMouseLeave={(e) => {
-                                                             e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                                                             e.currentTarget.style.boxShadow = 'none';
-                                                         }}
+                                                         onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.2)'; }}
+                                                         onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.boxShadow = 'none'; }}
                                                          title={effect.description.replace(/<[^>]*>?/gm, '')}
                                                     >
                                                         <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                                                            <i style={{
-                                                                display: 'inline-block',
-                                                                width: '24px',
-                                                                height: '24px',
-                                                                transform: 'scale(0.75)',
-                                                                transformOrigin: 'center',
-                                                                background: `url("https://pica.korlark.com/2018/obt/assets/images/pc/profile/img_engrave_icon.png") ${bgPos} center`,
-                                                            }}/>
-                                                            <span style={{
-                                                                fontSize: '14px',
-                                                                fontWeight: 'bold',
-                                                                color: '#fff'
-                                                            }}>{effect.name}</span>
-                                                            <span style={{
-                                                                fontSize: '14px',
-                                                                fontWeight: 'bold',
-                                                                color: getGradeColor(effect.grade)
-                                                            }}>
-                                                                +{effect.level}
-                                                            </span>
+                                                            <i style={{ display: 'inline-block', width: '24px', height: '24px', transform: 'scale(0.75)', transformOrigin: 'center', background: `url("https://pica.korlark.com/2018/obt/assets/images/pc/profile/img_engrave_icon.png") ${bgPos} center`, }}/>
+                                                            <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>{effect.name}</span>
+                                                            <span style={{ fontSize: '14px', fontWeight: 'bold', color: getGradeColor(effect.grade) }}>+{effect.level}</span>
                                                         </div>
 
                                                         {matchedStoneEng && matchedStoneEng.level > 0 && !matchedStoneEng.isPenalty && (
-                                                            <div style={{
-                                                                marginLeft: 'auto',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '2px',
-                                                                fontWeight: 'bold'
-                                                            }}>
-                                                                <i style={{
-                                                                    display: 'inline-block',
-                                                                    width: '24px',
-                                                                    height: '24px',
-                                                                    transform: 'scale(0.75)',
-                                                                    transformOrigin: 'center',
-                                                                    background: `url("https://pica.korlark.com/2018/obt/assets/images/pc/profile/img_engrave_icon.png") 0px center`,
-                                                                }}/>
-                                                                <span style={{
-                                                                    fontSize: '14px',
-                                                                    color: '#fff'
-                                                                }}>+{matchedStoneEng.level}</span>
+                                                            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '2px', fontWeight: 'bold' }}>
+                                                                <i style={{ display: 'inline-block', width: '24px', height: '24px', transform: 'scale(0.75)', transformOrigin: 'center', background: `url("https://pica.korlark.com/2018/obt/assets/images/pc/profile/img_engrave_icon.png") 0px center`, }}/>
+                                                                <span style={{ fontSize: '14px', color: '#fff' }}>+{matchedStoneEng.level}</span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -2165,112 +1755,33 @@ export default function CharacterSearchPage() {
                                             })}
                                         </div>
                                     ) : (
-                                        <div style={{
-                                            color: '#aaa',
-                                            fontSize: '14px',
-                                            textAlign: 'center',
-                                            padding: '10px 0'
-                                        }}>
-                                            장착된 각인이 없습니다.
-                                        </div>
+                                        <div style={{ color: '#aaa', fontSize: '14px', textAlign: 'center', padding: '10px 0' }}>장착된 각인이 없습니다.</div>
                                     )}
                                 </div>
                             </div>
 
-                            <div style={{flex: 1, display: 'flex', flexDirection: 'column', gap: '20px'}}>
-                                <div style={{display: 'flex', gap: '20px'}}>
-                                    <div style={{
-                                        flex: 1,
-                                        background: 'var(--bg-card)',
-                                        padding: '20px',
-                                        borderRadius: '12px',
-                                        border: '1px solid var(--border-color)'
-                                    }}>
-                                        <h3 style={{
-                                            margin: '0 0 15px 0',
-                                            fontSize: '18px',
-                                            color: '#fff',
-                                            borderBottom: '1px solid rgba(255,255,255,0.1)',
-                                            paddingBottom: '10px'
-                                        }}>장비</h3>
+                            <div className="right-column">
+                                <div style={{display: 'flex', gap: '20px', flexWrap: 'wrap'}}>
+                                    <div style={{ flex: 1, minWidth: '300px', background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                                        <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>장비</h3>
                                         <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
                                             {leftEquipments.map((eq, index) => {
-                                                // 🌟 4. 파싱된 데이터에서 advancedReforge 사용
                                                 const {quality, advancedReforge} = parseTooltip(eq.tooltip);
                                                 const qualityInfo = getQualityGrade(quality);
                                                 return (
-                                                    <div key={index} style={{
-                                                        display: 'flex',
-                                                        alignItems: 'flex-start',
-                                                        gap: '10px',
-                                                        background: 'rgba(255,255,255,0.03)',
-                                                        padding: '8px',
-                                                        borderRadius: '6px'
-                                                    }}>
-                                                        <div style={{
-                                                            display: 'flex',
-                                                            flexDirection: 'column',
-                                                            alignItems: 'center',
-                                                            width: '40px',
-                                                            flexShrink: 0
-                                                        }}>
-                                                            <div style={{
-                                                                width: '40px',
-                                                                height: '40px',
-                                                                borderRadius: '4px',
-                                                                overflow: 'hidden',
-                                                                background: '#000',
-                                                                border: `1px solid ${getGradeColor(eq.grade)}`,
-                                                                marginBottom: '4px'
-                                                            }}>
-                                                                <img src={eq.icon} alt={eq.name} style={{
-                                                                    width: '100%',
-                                                                    height: '100%',
-                                                                    objectFit: 'cover'
-                                                                }}/>
+                                                    <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '6px' }}>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '40px', flexShrink: 0 }}>
+                                                            <div style={{ width: '40px', height: '40px', borderRadius: '4px', overflow: 'hidden', background: '#000', border: `1px solid ${getGradeColor(eq.grade)}`, marginBottom: '4px' }}>
+                                                                <img src={eq.icon} alt={eq.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
                                                             </div>
-                                                            {quality >= 0 && <div style={{
-                                                                fontSize: '11px',
-                                                                fontWeight: 'bold',
-                                                                color: qualityInfo.color,
-                                                                textAlign: 'center',
-                                                                whiteSpace: 'nowrap'
-                                                            }}>품질 {quality}</div>}
+                                                            {quality >= 0 && <div style={{ fontSize: '11px', fontWeight: 'bold', color: qualityInfo.color, textAlign: 'center', whiteSpace: 'nowrap' }}>품질 {quality}</div>}
                                                         </div>
-                                                        <div style={{
-                                                            flex: 1,
-                                                            overflow: 'hidden',
-                                                            display: 'flex',
-                                                            flexDirection: 'column',
-                                                            justifyContent: 'center',
-                                                            minHeight: '40px'
-                                                        }}>
+                                                        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '40px' }}>
                                                             <div style={{fontSize: '11px', color: '#aaa'}}>{eq.type}</div>
-                                                            {/* 🌟 5. 상급 재련 단계가 있다면 배지 형태로 추가 렌더링 */}
-                                                            <div style={{
-                                                                fontSize: '13px',
-                                                                fontWeight: 'bold',
-                                                                color: getGradeColor(eq.grade),
-                                                                whiteSpace: 'nowrap',
-                                                                overflow: 'hidden',
-                                                                textOverflow: 'ellipsis',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '6px'
-                                                            }}>
+                                                            <div style={{ fontSize: '13px', fontWeight: 'bold', color: getGradeColor(eq.grade), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                                 <span>{eq.name}</span>
                                                                 {advancedReforge > 0 && (
-                                                                    <span style={{
-                                                                        fontSize: '11px',
-                                                                        color: '#ffb74d',
-                                                                        background: 'rgba(255, 183, 77, 0.15)',
-                                                                        padding: '2px 6px',
-                                                                        borderRadius: '4px',
-                                                                        fontWeight: 'bold',
-                                                                        flexShrink: 0
-                                                                    }}>
-                                                                        상재 {advancedReforge}
-                                                                </span>
+                                                                    <span style={{ fontSize: '11px', color: '#ffb74d', background: 'rgba(255, 183, 77, 0.15)', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', flexShrink: 0 }}>상재 {advancedReforge}</span>
                                                                 )}
                                                             </div>
                                                         </div>
@@ -2279,70 +1790,21 @@ export default function CharacterSearchPage() {
                                             })}
                                         </div>
 
-                                        <h3 style={{
-                                            margin: '20px 0 15px 0',
-                                            fontSize: '18px',
-                                            color: '#fff',
-                                            borderBottom: '1px solid rgba(255,255,255,0.1)',
-                                            paddingBottom: '10px'
-                                        }}>스킬</h3>
-                                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px'}}>
+                                        <h3 style={{ margin: '20px 0 15px 0', fontSize: '18px', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>스킬</h3>
+                                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px'}}>
                                             {character.skills
                                                 .filter(skill => skill.level >= 2 || skill.runeName || skill.isAwakening)
                                                 .map((skill, index) => (
-                                                    <div key={index} style={{
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '8px',
-                                                        background: 'rgba(255,255,255,0.03)',
-                                                        padding: '6px',
-                                                        borderRadius: '6px'
-                                                    }}>
-                                                        <div style={{
-                                                            position: 'relative',
-                                                            width: '32px',
-                                                            height: '32px',
-                                                            borderRadius: '4px',
-                                                            overflow: 'hidden',
-                                                            flexShrink: 0
-                                                        }}>
-                                                            <img src={skill.icon} alt={skill.name} style={{
-                                                                width: '100%',
-                                                                height: '100%',
-                                                                objectFit: 'cover'
-                                                            }}/>
-                                                            <div style={{
-                                                                position: 'absolute',
-                                                                bottom: 0,
-                                                                right: 0,
-                                                                background: 'rgba(0,0,0,0.8)',
-                                                                color: '#fff',
-                                                                fontSize: '9px',
-                                                                padding: '0 2px',
-                                                                borderRadius: '2px'
-                                                            }}>{skill.level}</div>
+                                                    <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '6px', borderRadius: '6px' }}>
+                                                        <div style={{ position: 'relative', width: '32px', height: '32px', borderRadius: '4px', overflow: 'hidden', flexShrink: 0 }}>
+                                                            <img src={skill.icon} alt={skill.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+                                                            <div style={{ position: 'absolute', bottom: 0, right: 0, background: 'rgba(0,0,0,0.8)', color: '#fff', fontSize: '9px', padding: '0 2px', borderRadius: '2px' }}>{skill.level}</div>
                                                         </div>
                                                         <div style={{overflow: 'hidden'}}>
-                                                            <div style={{
-                                                                fontSize: '12px',
-                                                                fontWeight: 'bold',
-                                                                color: '#ddd',
-                                                                whiteSpace: 'nowrap',
-                                                                overflow: 'hidden',
-                                                                textOverflow: 'ellipsis'
-                                                            }}>{skill.name}</div>
+                                                            <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#ddd', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{skill.name}</div>
                                                             {skill.runeName && (
-                                                                <div style={{
-                                                                    fontSize: '11px',
-                                                                    color: getRuneColor(skill.runeGrade),
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    gap: '3px'
-                                                                }}>
-                                                                    <img src={skill.runeIcon} alt="" style={{
-                                                                        width: '12px',
-                                                                        height: '12px'
-                                                                    }}/>{skill.runeName}
+                                                                <div style={{ fontSize: '11px', color: getRuneColor(skill.runeGrade), display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                                                    <img src={skill.runeIcon} alt="" style={{ width: '12px', height: '12px' }}/>{skill.runeName}
                                                                 </div>
                                                             )}
                                                         </div>
@@ -2351,124 +1813,39 @@ export default function CharacterSearchPage() {
                                         </div>
                                     </div>
 
-                                    <div style={{
-                                        flex: 1.2,
-                                        background: 'var(--bg-card)',
-                                        padding: '20px',
-                                        borderRadius: '12px',
-                                        border: '1px solid var(--border-color)'
-                                    }}>
-                                        <h3 style={{
-                                            margin: '0 0 15px 0',
-                                            fontSize: '18px',
-                                            color: '#fff',
-                                            borderBottom: '1px solid rgba(255,255,255,0.1)',
-                                            paddingBottom: '10px'
-                                        }}>악세서리 & 특수장비</h3>
+                                    <div style={{ flex: 1.2, minWidth: '300px', background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                                        <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>악세서리 & 특수장비</h3>
                                         <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
                                             {rightEquipments.map((eq, index) => {
-                                                const {
-                                                    quality,
-                                                    options,
-                                                    mainStat,
-                                                    abilityEngravings
-                                                } = parseTooltip(eq.tooltip);
+                                                const { quality, options, mainStat, abilityEngravings } = parseTooltip(eq.tooltip);
                                                 const qualityInfo = getQualityGrade(quality);
 
                                                 return (
-                                                    <div key={index} style={{
-                                                        display: 'flex',
-                                                        alignItems: 'flex-start',
-                                                        gap: '10px',
-                                                        background: 'rgba(255,255,255,0.03)',
-                                                        padding: '10px',
-                                                        borderRadius: '6px'
-                                                    }}>
-                                                        <div style={{
-                                                            display: 'flex',
-                                                            flexDirection: 'column',
-                                                            alignItems: 'center',
-                                                            width: '40px',
-                                                            flexShrink: 0
-                                                        }}>
-                                                            <div style={{
-                                                                width: '40px',
-                                                                height: '40px',
-                                                                borderRadius: '4px',
-                                                                overflow: 'hidden',
-                                                                background: '#000',
-                                                                border: `1px solid ${getGradeColor(eq.grade)}`,
-                                                                marginBottom: '4px'
-                                                            }}>
-                                                                <img src={eq.icon} alt={eq.name} style={{
-                                                                    width: '100%',
-                                                                    height: '100%',
-                                                                    objectFit: 'cover'
-                                                                }}/>
+                                                    <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '6px' }}>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '40px', flexShrink: 0 }}>
+                                                            <div style={{ width: '40px', height: '40px', borderRadius: '4px', overflow: 'hidden', background: '#000', border: `1px solid ${getGradeColor(eq.grade)}`, marginBottom: '4px' }}>
+                                                                <img src={eq.icon} alt={eq.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
                                                             </div>
-                                                            {quality >= 0 && <div style={{
-                                                                fontSize: '11px',
-                                                                fontWeight: 'bold',
-                                                                color: qualityInfo.color,
-                                                                textAlign: 'center',
-                                                                whiteSpace: 'nowrap'
-                                                            }}>품질 {quality}</div>}
-                                                            {mainStat && <div style={{
-                                                                fontSize: '10px',
-                                                                color: '#aaa',
-                                                                marginTop: '2px',
-                                                                textAlign: 'center',
-                                                                whiteSpace: 'nowrap'
-                                                            }}>{mainStat}</div>}
+                                                            {quality >= 0 && <div style={{ fontSize: '11px', fontWeight: 'bold', color: qualityInfo.color, textAlign: 'center', whiteSpace: 'nowrap' }}>품질 {quality}</div>}
+                                                            {mainStat && <div style={{ fontSize: '10px', color: '#aaa', marginTop: '2px', textAlign: 'center', whiteSpace: 'nowrap' }}>{mainStat}</div>}
                                                         </div>
                                                         <div style={{flex: 1, overflow: 'hidden'}}>
-                                                            <div style={{
-                                                                fontSize: '13px',
-                                                                fontWeight: 'bold',
-                                                                color: getGradeColor(eq.grade),
-                                                                marginBottom: '4px'
-                                                            }}>{eq.name}</div>
-                                                            <div style={{
-                                                                fontSize: '12px',
-                                                                color: '#ddd',
-                                                                lineHeight: '1.4'
-                                                            }}>
-
+                                                            <div style={{ fontSize: '13px', fontWeight: 'bold', color: getGradeColor(eq.grade), marginBottom: '4px' }}>{eq.name}</div>
+                                                            <div style={{ fontSize: '12px', color: '#ddd', lineHeight: '1.4' }}>
                                                                 {eq.type === "어빌리티 스톤" && abilityEngravings.length > 0 ? (
-                                                                    <div style={{
-                                                                        display: 'flex',
-                                                                        flexDirection: 'column',
-                                                                        gap: '3px',
-                                                                        marginTop: '4px'
-                                                                    }}>
+                                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '4px' }}>
                                                                         {abilityEngravings.map((eng, i) => (
-                                                                            <div key={i} style={{
-                                                                                display: 'flex',
-                                                                                alignItems: 'center',
-                                                                                gap: '6px'
-                                                                            }}>
-                                                                                <span style={{
-                                                                                    color: eng.isPenalty ? '#ef5350' : '#81c784',
-                                                                                    fontWeight: 'bold'
-                                                                                }}>[{eng.name}]</span>
-                                                                                <span style={{
-                                                                                    color: '#fff',
-                                                                                    fontWeight: 'bold'
-                                                                                }}>Lv.{eng.level}</span>
+                                                                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                                <span style={{ color: eng.isPenalty ? '#ef5350' : '#81c784', fontWeight: 'bold' }}>[{eng.name}]</span>
+                                                                                <span style={{ color: '#fff', fontWeight: 'bold' }}>Lv.{eng.level}</span>
                                                                             </div>
                                                                         ))}
                                                                     </div>
                                                                 ) : options.length > 0 ? (
-                                                                    <div style={{
-                                                                        display: 'flex',
-                                                                        flexDirection: 'column',
-                                                                        gap: '2px'
-                                                                    }}>
-                                                                        {options.map((opt, i) => <div
-                                                                            key={i}>{renderOption(opt, eq.type)}</div>)}
+                                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                                                        {options.map((opt, i) => <div key={i}>{renderOption(opt, eq.type)}</div>)}
                                                                     </div>
                                                                 ) : <span style={{color: '#666'}}>옵션 정보 없음</span>}
-
                                                             </div>
                                                         </div>
                                                     </div>
@@ -2478,28 +1855,12 @@ export default function CharacterSearchPage() {
                                     </div>
                                 </div>
 
-                                <div style={{
-                                    background: 'var(--bg-card)',
-                                    padding: '20px',
-                                    borderRadius: '12px',
-                                    border: '1px solid var(--border-color)'
-                                }}>
-                                    <h3 style={{
-                                        margin: '0 0 15px 0',
-                                        fontSize: '18px',
-                                        color: '#fff',
-                                        borderBottom: '1px solid rgba(255,255,255,0.1)',
-                                        paddingBottom: '10px'
-                                    }}>
-                                        보석
-                                        <span style={{
-                                            fontSize: '13px',
-                                            color: '#aaa',
-                                            fontWeight: 'normal'
-                                        }}>{getGemSummary()}</span>
+                                <div style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)', marginTop: '20px' }}>
+                                    <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>
+                                        보석 <span style={{ fontSize: '13px', color: '#aaa', fontWeight: 'normal' }}>{getGemSummary()}</span>
                                     </h3>
                                     {character.gems.length > 0 ? (
-                                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(11, 1fr)', gap: '5px'}}>
+                                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(40px, 1fr))', gap: '5px'}}>
                                             {character.gems
                                                 .sort((a, b) => {
                                                     const isDmgA = isDamageGem(a);
@@ -2512,56 +1873,19 @@ export default function CharacterSearchPage() {
                                                 .map((gem, index) => {
                                                     const isDmg = isDamageGem(gem);
                                                     const bgColor = isDmg ? 'rgba(255, 87, 34, 0.15)' : 'rgba(33, 150, 243, 0.15)';
-
                                                     let skillIcon = gem.skillIcon;
-                                                    if (!skillIcon) {
-                                                        skillIcon = findSkillIconFallback(gem.tooltip, character.skills) || undefined;
-                                                    }
+                                                    if (!skillIcon) { skillIcon = findSkillIconFallback(gem.tooltip, character.skills) || undefined; }
 
                                                     return (
                                                         <div key={index} style={{
-                                                            position: 'relative',
-                                                            width: '100%',
-                                                            aspectRatio: '1/1',
-                                                            borderRadius: '6px',
-                                                            overflow: 'hidden',
-                                                            background: bgColor,
-                                                            border: `1px solid ${getGradeColor(gem.grade)}`,
-                                                            padding: '2px'
+                                                            position: 'relative', width: '100%', aspectRatio: '1/1', borderRadius: '6px',
+                                                            overflow: 'hidden', background: bgColor, border: `1px solid ${getGradeColor(gem.grade)}`, padding: '2px'
                                                         }} title={gem.name}>
-                                                            <img src={gem.icon} alt={gem.name} style={{
-                                                                width: '100%',
-                                                                height: '100%',
-                                                                objectFit: 'cover',
-                                                                borderRadius: '4px'
-                                                            }}/>
-                                                            <div style={{
-                                                                position: 'absolute',
-                                                                bottom: 0,
-                                                                right: 0,
-                                                                background: 'rgba(0,0,0,0.7)',
-                                                                color: '#fff',
-                                                                fontSize: '11px',
-                                                                padding: '1px 4px',
-                                                                borderRadius: '4px 0 0 0'
-                                                            }}>{gem.level}</div>
+                                                            <img src={gem.icon} alt={gem.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px' }}/>
+                                                            <div style={{ position: 'absolute', bottom: 0, right: 0, background: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: '11px', padding: '1px 4px', borderRadius: '4px 0 0 0' }}>{gem.level}</div>
                                                             {skillIcon && (
-                                                                <div style={{
-                                                                    position: 'absolute',
-                                                                    bottom: '2px',
-                                                                    left: '2px',
-                                                                    width: '18px',
-                                                                    height: '18px',
-                                                                    borderRadius: '3px',
-                                                                    overflow: 'hidden',
-                                                                    border: '1px solid rgba(0,0,0,0.6)',
-                                                                    zIndex: 2
-                                                                }}>
-                                                                    <img src={skillIcon} alt="skill" style={{
-                                                                        width: '100%',
-                                                                        height: '100%',
-                                                                        objectFit: 'cover'
-                                                                    }}/>
+                                                                <div style={{ position: 'absolute', bottom: '2px', left: '2px', width: '18px', height: '18px', borderRadius: '3px', overflow: 'hidden', border: '1px solid rgba(0,0,0,0.6)', zIndex: 2 }}>
+                                                                    <img src={skillIcon} alt="skill" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
                                                                 </div>
                                                             )}
                                                         </div>
@@ -2573,19 +1897,8 @@ export default function CharacterSearchPage() {
                                     )}
                                 </div>
 
-                                <div style={{
-                                    background: 'var(--bg-card)',
-                                    padding: '20px',
-                                    borderRadius: '12px',
-                                    border: '1px solid var(--border-color)'
-                                }}>
-                                    <h3 style={{
-                                        margin: '0 0 15px 0',
-                                        fontSize: '18px',
-                                        color: '#fff',
-                                        borderBottom: '1px solid rgba(255,255,255,0.1)',
-                                        paddingBottom: '10px'
-                                    }}>카드</h3>
+                                <div style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)', marginTop: '20px' }}>
+                                    <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>카드</h3>
 
                                     <div style={{ display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
                                         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -2599,13 +1912,8 @@ export default function CharacterSearchPage() {
                                         </div>
 
                                         <div style={{
-                                            flex: 1,
-                                            minWidth: '250px',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            justifyContent: 'center',
-                                            borderLeft: '1px solid rgba(255,255,255,0.1)',
-                                            paddingLeft: '24px'
+                                            flex: 1, minWidth: '250px', display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                                            borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '24px'
                                         }}>
                                             {(() => {
                                                 const { stats, specials } = getAggregatedCardEffects();
@@ -2645,7 +1953,6 @@ export default function CharacterSearchPage() {
                                         </div>
                                     </div>
                                 </div>
-
                             </div>
                         </div>
                     )}

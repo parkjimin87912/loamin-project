@@ -420,7 +420,7 @@ export default function GeneralReforgePage() {
                     </div>
                 </aside>
 
-                <main style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <main style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
                     {optimal && (
                         <>
                             <section className="content-card" style={{ border: '2px solid #a970ff', position: 'relative' }}>
@@ -447,7 +447,7 @@ export default function GeneralReforgePage() {
 
                             <section className="content-card">
                                 <div className="card-header"><span className="card-title">누적 재료 소모량 ({selectedComboName} 기준)</span></div>
-                                <div className="material-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                <div className="material-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
                                     <div>
                                         <div className="stat-label" style={{marginBottom: '10px', textAlign: 'center', color: '#a970ff'}}>평균 시도 (약 {currentCombo.expectedTries}회)</div>
                                         {currentCombo.usedMaterials.map(mat => (
@@ -476,7 +476,7 @@ export default function GeneralReforgePage() {
                             </section>
 
                             <section className="content-card">
-                                <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
                                     <span className="card-title">상세 확률표</span>
 
                                     <div className="dropdown-container" style={{ position: 'relative', zIndex: 10 }}>
@@ -514,27 +514,27 @@ export default function GeneralReforgePage() {
 
                                 {currentCombo && (
                                     <>
-                                        <div className="optimal-grid" style={{marginBottom: '20px', gridTemplateColumns: 'repeat(4, 1fr)'}}>
-                                            <div className="stat-box">
+                                        <div className="optimal-grid" style={{marginBottom: '20px', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px'}}>
+                                            <div className="stat-box" style={{padding: '15px'}}>
                                                 <div className="stat-label">평균 시도</div>
-                                                <div className="stat-value">{currentCombo.expectedTries}회</div>
+                                                <div className="stat-value" style={{fontSize: '20px'}}>{currentCombo.expectedTries}회</div>
                                             </div>
-                                            <div className="stat-box">
+                                            <div className="stat-box" style={{padding: '15px'}}>
                                                 <div className="stat-label">장기백 (100%)</div>
-                                                <div className="stat-value">{currentCombo.maxTries}회</div>
+                                                <div className="stat-value" style={{fontSize: '20px'}}>{currentCombo.maxTries}회</div>
                                             </div>
-                                            <div className="stat-box">
+                                            <div className="stat-box" style={{padding: '15px'}}>
                                                 <div className="stat-label">평균 기댓값 비용</div>
-                                                <div className="stat-value">{currentCombo.expectedCost.toLocaleString()} G</div>
+                                                <div className="stat-value" style={{fontSize: '20px', wordBreak: 'break-all'}}>{currentCombo.expectedCost.toLocaleString()} G</div>
                                             </div>
-                                            <div className="stat-box">
+                                            <div className="stat-box" style={{padding: '15px'}}>
                                                 <div className="stat-label">적용된 전략 요약</div>
-                                                <div className="stat-value" style={{fontSize: '12px', color: '#4caf50'}}>{currentCombo.desc}</div>
+                                                <div className="stat-value" style={{fontSize: '13px', color: '#4caf50', lineHeight: '1.4'}}>{currentCombo.desc}</div>
                                             </div>
                                         </div>
 
-                                        <div style={{overflowX: 'auto'}}>
-                                            <table className="prob-table" style={{fontSize: '13px'}}>
+                                        <div className="table-container" style={{overflowX: 'auto'}}>
+                                            <table className="prob-table" style={{fontSize: '13px', minWidth: '600px'}}>
                                                 <thead>
                                                 <tr>
                                                     <th>시도</th>

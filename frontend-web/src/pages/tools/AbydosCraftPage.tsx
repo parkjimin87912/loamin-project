@@ -45,79 +45,164 @@ export default function AbydosCraftPage() {
     }, []);
 
     const result = useMemo(() => {
+        // 🌟 입력값이 하나라도 있으면 계산 시작
         if (Object.values(owned).every(v => v === 0)) return null;
 
+        // 🌟 이진 탐색으로 최대 제작 가능 횟수 찾기
+        let low = 0, high = 100000, maxN = 0, bestOps = null;
+
+        // 🌟 제작 가능 여부 판별 함수 (핵심 로직)
         const checkFeasibility = (n: number) => {
+            // 1. 목표 필요량 계산
             let TARGET;
             if (craftType === 'advanced') {
-                // 상급 아비도스 융화 재료
+                // 상급 아비도스 융화 재료 (1회: 일반 112, 고급 59, 아비도스 43)
                 TARGET = { abydos: 43 * n, soft: 59 * n, normal: 112 * n };
             } else {
-                // 일반 아비도스 융화 재료 (비율 수정됨: 33, 45, 86)
+                // 일반 아비도스 융화 재료 (1회: 일반 86, 고급 45, 아비도스 33)
                 TARGET = { abydos: 33 * n, soft: 45 * n, normal: 86 * n };
             }
 
-            const inv = { sturdy: owned.sturdyTimber, soft: owned.softTimber, normal: owned.timber, powder: owned.powder, abydos: owned.abydosTimber };
+            // 2. 현재 보유량 복사 (시뮬레이션용)
+            const inv = { 
+                sturdy: owned.sturdyTimber, 
+                soft: owned.softTimber, 
+                normal: owned.timber, 
+                powder: owned.powder, 
+                abydos: owned.abydosTimber 
+            };
+            
             const ops = { sturdyToNormal: 0, normalToPowder: 0, softToPowder: 0, powderToAbydos: 0 };
 
+            // 3. [교환 1] 튼튼한 목재 -> 일반 목재 (비율 1:10)
+            // 튼튼한 목재 5개 -> 일반 목재 50개 (1회 교환 단위)
             if (inv.sturdy >= 5) {
                 const exchangeCount = Math.floor(inv.sturdy / 5);
                 ops.sturdyToNormal = exchangeCount;
-                inv.sturdy -= exchangeCount * 5; inv.normal += exchangeCount * 50;
+                inv.sturdy -= exchangeCount * 5; 
+                inv.normal += exchangeCount * 50;
             }
+
+            // 4. [교환 2] 아비도스 목재 부족분 계산 -> 가루로 충당
             const missingAbydos = Math.max(0, TARGET.abydos - inv.abydos);
             let requiredPowder = 0;
+            
             if (missingAbydos > 0) {
+                // 가루 100개 -> 아비도스 목재 10개 (1회 교환 단위)
                 ops.powderToAbydos = Math.ceil(missingAbydos / 10);
                 requiredPowder = ops.powderToAbydos * 100;
             }
+
+            // 5. [교환 3] 가루 부족분 계산 -> 일반/부드러운 목재로 충당
             let currentPowder = inv.powder;
             let missingPowder = Math.max(0, requiredPowder - currentPowder);
 
+            // 5-1. 일반 목재 -> 가루 (비율 100:80)
             if (missingPowder > 0) {
                 const surplusNormal = Math.max(0, inv.normal - TARGET.normal);
                 if (surplusNormal >= 100) {
+                    // 필요한 교환 횟수 (가루 80개당 1회)
                     const needed = Math.ceil(missingPowder / 80);
+                    // 가능한 교환 횟수 (일반 목재 100개당 1회)
                     const possible = Math.floor(surplusNormal / 100);
+                    
                     const actual = Math.min(needed, possible);
                     ops.normalToPowder = actual;
-                    inv.normal -= actual * 100; currentPowder += actual * 80;
+                    
+                    inv.normal -= actual * 100; 
+                    currentPowder += actual * 80;
                     missingPowder = Math.max(0, requiredPowder - currentPowder);
                 }
             }
+
+            // 5-2. 부드러운 목재 -> 가루 (비율 50:80)
             if (missingPowder > 0) {
                 const surplusSoft = Math.max(0, inv.soft - TARGET.soft);
                 if (surplusSoft >= 50) {
+                    // 필요한 교환 횟수
                     const needed = Math.ceil(missingPowder / 80);
+                    // 가능한 교환 횟수
                     const possible = Math.floor(surplusSoft / 50);
+                    
                     const actual = Math.min(needed, possible);
                     ops.softToPowder = actual;
-                    inv.soft -= actual * 50; currentPowder += actual * 80;
+                    
+                    inv.soft -= actual * 50; 
+                    currentPowder += actual * 80;
                     missingPowder = Math.max(0, requiredPowder - currentPowder);
                 }
             }
+
+            // 6. 최종 검증
+            // 아비도스 목재는 가루 교환을 통해 확보된 것으로 간주
             const finalAbydos = inv.abydos + (ops.powderToAbydos * 10);
-            const isPossible = (finalAbydos >= TARGET.abydos && inv.normal >= TARGET.normal && inv.soft >= TARGET.soft && missingPowder <= 0);
+            
+            const isPossible = (
+                finalAbydos >= TARGET.abydos && 
+                inv.normal >= TARGET.normal && 
+                inv.soft >= TARGET.soft && 
+                missingPowder <= 0
+            );
+
             return { possible: isPossible, ops };
         };
 
-        let low = 0, high = 100000, maxN = 0, bestOps = null;
+        // 이진 탐색 실행
         while (low <= high) {
             const mid = Math.floor((low + high) / 2);
             if (mid === 0) { low = 1; continue; }
+            
             const res = checkFeasibility(mid);
-            if (res.possible) { maxN = mid; bestOps = res.ops; low = mid + 1; }
-            else { high = mid - 1; }
+            if (res.possible) { 
+                maxN = mid; 
+                bestOps = res.ops; 
+                low = mid + 1; 
+            } else { 
+                high = mid - 1; 
+            }
         }
 
         if (maxN === 0 || !bestOps) return { maxCrafts: 0, actions: [], isValid: false };
 
+        // 결과 포맷팅
         const actions = [];
         let step = 1;
-        if (bestOps.sturdyToNormal > 0) actions.push({ step: step++, label: "튼튼한 목재 ➡ 일반 목재", count: bestOps.sturdyToNormal, desc: `(튼튼한 목재 ${bestOps.sturdyToNormal * 5}개 소모)` });
-        if (bestOps.normalToPowder > 0) actions.push({ step: step++, label: "일반 목재 ➡ 벌목의 가루", count: bestOps.normalToPowder, desc: `(일반 목재 ${bestOps.normalToPowder * 100}개 소모)` });
-        if (bestOps.softToPowder > 0) actions.push({ step: step++, label: "부드러운 목재 ➡ 벌목의 가루", count: bestOps.softToPowder, desc: `(부드러운 목재 ${bestOps.softToPowder * 50}개 소모)` });
-        if (bestOps.powderToAbydos > 0) actions.push({ step: step++, label: "벌목의 가루 ➡ 아비도스 목재", count: bestOps.powderToAbydos, desc: `(가루 ${bestOps.powderToAbydos * 100}개 소모)` });
+        
+        if (bestOps.sturdyToNormal > 0) {
+            actions.push({ 
+                step: step++, 
+                label: "튼튼한 목재 ➡ 일반 목재", 
+                count: bestOps.sturdyToNormal, 
+                desc: `(튼튼한 목재 ${bestOps.sturdyToNormal * 5}개 소모)` 
+            });
+        }
+        
+        if (bestOps.normalToPowder > 0) {
+            actions.push({ 
+                step: step++, 
+                label: "일반 목재 ➡ 벌목의 가루", 
+                count: bestOps.normalToPowder, 
+                desc: `(일반 목재 ${bestOps.normalToPowder * 100}개 소모)` 
+            });
+        }
+        
+        if (bestOps.softToPowder > 0) {
+            actions.push({ 
+                step: step++, 
+                label: "부드러운 목재 ➡ 벌목의 가루", 
+                count: bestOps.softToPowder, 
+                desc: `(부드러운 목재 ${bestOps.softToPowder * 50}개 소모)` 
+            });
+        }
+        
+        if (bestOps.powderToAbydos > 0) {
+            actions.push({ 
+                step: step++, 
+                label: "벌목의 가루 ➡ 아비도스 목재", 
+                count: bestOps.powderToAbydos, 
+                desc: `(가루 ${bestOps.powderToAbydos * 100}개 소모)` 
+            });
+        }
 
         return { maxCrafts: maxN, actions, isValid: true };
     }, [owned, craftType]);

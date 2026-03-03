@@ -17,4 +17,5 @@ public class LostArkMarketItemDto {
     private int avgPrice;
     private double changeRate;
     private String icon;
+    private int tradeCount;
 }

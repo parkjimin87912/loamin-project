@@ -167,7 +167,7 @@ export default function Home() {
                         </div>
                     </div>
 
-                    <div style={{ 
+                    <div className="home-grid" style={{ 
                         display: 'grid', 
                         gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', 
                         gap: '25px' 
@@ -195,7 +195,7 @@ export default function Home() {
                         </div>
                     </div>
 
-                    <div style={{ 
+                    <div className="home-grid" style={{
                         display: 'grid', 
                         gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', 
                         gap: '25px' 

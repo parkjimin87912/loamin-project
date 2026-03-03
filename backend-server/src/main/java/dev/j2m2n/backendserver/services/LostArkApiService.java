@@ -490,6 +490,7 @@ public class LostArkApiService {
         int minPrice = (int) raw.get("CurrentMinPrice");
         int recentPrice = (int) raw.get("RecentPrice");
         double avgPrice = ((Number) raw.get("YDayAvgPrice")).doubleValue();
+        int tradeCount = raw.containsKey("TradeCount") ? (int) raw.get("TradeCount") : 0; // 🌟 거래량 추가
 
         double changeRate = 0;
         if (avgPrice > 0) {
@@ -506,7 +507,8 @@ public class LostArkApiService {
                 recentPrice,
                 (int) avgPrice,
                 changeRate,
-                iconUrl
+                iconUrl,
+                tradeCount // 🌟 생성자 인자 추가
         );
     }
 
@@ -538,7 +540,8 @@ public class LostArkApiService {
                 0,
                 0,
                 0,
-                iconUrl
+                iconUrl,
+                0 // 🌟 거래량 0으로 초기화 (경매장은 거래량 정보가 다름)
         );
     }
     

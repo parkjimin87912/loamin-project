@@ -1,4 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
+import '../App.css';
 
 export default function MarketCategoryHeader() {
     const navigate = useNavigate();
@@ -14,22 +15,14 @@ export default function MarketCategoryHeader() {
     ];
 
     return (
-        <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border-color)', marginBottom: '30px', display: 'flex', gap: '20px', overflowX: 'auto' }}>
+        <div className="tools-header-container">
             {tabs.map(tab => {
                 const isActive = currentPath.includes(tab.path);
                 return (
                     <span
                         key={tab.path}
                         onClick={() => navigate(tab.path)}
-                        style={{
-                            color: isActive ? '#fff' : 'var(--text-secondary)',
-                            fontWeight: isActive ? 'bold' : 'normal',
-                            fontSize: '15px',
-                            borderBottom: isActive ? '2px solid var(--text-accent)' : 'none',
-                            paddingBottom: '19px',
-                            cursor: 'pointer',
-                            whiteSpace: 'nowrap'
-                        }}
+                        className={`tools-tab ${isActive ? 'active' : ''}`}
                     >
                         {tab.name}
                     </span>

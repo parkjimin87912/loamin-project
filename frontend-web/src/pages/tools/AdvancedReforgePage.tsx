@@ -259,7 +259,7 @@ export default function AdvancedReforgePage() {
                 </aside>
 
                 {/* --- [우측 메인 결과] --- */}
-                <main style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <main style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
                     {bestCombo && (
                         <>
                             <section className="content-card" style={{ border: '2px solid #a970ff', position: 'relative' }}>
@@ -276,7 +276,7 @@ export default function AdvancedReforgePage() {
                                     </div>
                                 </div>
 
-                                <div className="optimal-grid" style={{marginTop: '20px', gridTemplateColumns: refineTable.hasEnhancedBonus ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)'}}>
+                                <div className="optimal-grid" style={{marginTop: '20px', gridTemplateColumns: refineTable.hasEnhancedBonus ? 'repeat(auto-fit, minmax(150px, 1fr))' : 'repeat(auto-fit, minmax(200px, 1fr))'}}>
                                     <div className="stat-box" style={{background: 'rgba(169, 112, 255, 0.1)', border: '1px solid rgba(169, 112, 255, 0.3)'}}>
                                         <div className="stat-label" style={{color: '#a970ff'}}>일반 재련 시</div>
                                         <div className="stat-value" style={{fontSize: '15px'}}>{formatStrategy(bestCombo.normalBreathNames)}</div>
@@ -296,7 +296,7 @@ export default function AdvancedReforgePage() {
 
                             <section className="content-card">
                                 <div className="card-header"><span className="card-title">예상 재료 소모량 (1위 전략 기준)</span></div>
-                                <div className="material-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                <div className="material-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
                                     {bestCombo.expectedMaterials.map((mat, idx) => {
                                         // 아이콘 매핑
                                         let iconUrl = itemIcons[mat.name];
@@ -335,8 +335,8 @@ export default function AdvancedReforgePage() {
 
                             <section className="content-card">
                                 <div className="card-header"><span className="card-title">모든 전략 순위표 (비용순)</span></div>
-                                <div style={{ overflowX: 'auto' }}>
-                                    <table className="prob-table" style={{ fontSize: '13px' }}>
+                                <div className="table-container" style={{ overflowX: 'auto' }}>
+                                    <table className="prob-table" style={{ fontSize: '13px', minWidth: '600px' }}>
                                         <thead>
                                         <tr>
                                             <th>순위</th>

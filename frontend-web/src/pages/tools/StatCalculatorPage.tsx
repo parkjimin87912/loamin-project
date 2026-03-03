@@ -87,7 +87,7 @@ export default function StatCalculatorPage() {
         <div className="container">
             <ToolsHeader />
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px', marginTop: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginTop: '20px', paddingBottom: '50px' }}>
 
                 {/* 🌟 좌측: 치명 스탯 계산기 (뭉가 / 입타) */}
                 <section className="content-card">
@@ -114,8 +114,15 @@ export default function StatCalculatorPage() {
                         ].map(item => (
                             <div key={item.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-input)', padding: '8px 12px', borderRadius: '6px' }}>
                                 <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{item.label}</span>
-                                <input type="number" step="0.01" className="price-input" style={{ width: '60px', background: 'transparent', border: 'none', color: '#fff', textAlign: 'right', fontWeight: 'bold' }}
-                                       value={critValues[item.key as keyof typeof critValues] || ''} placeholder="0" onChange={(e) => handleCritChange(item.key as keyof typeof critValues, Number(e.target.value))} />
+                                <input 
+                                    type="number" 
+                                    step="0.01" 
+                                    className="price-input" 
+                                    style={{ width: '60px', background: 'transparent', border: 'none', color: '#fff', textAlign: 'right', fontWeight: 'bold' }}
+                                    value={critValues[item.key as keyof typeof critValues] || ''} 
+                                    placeholder="0" 
+                                    onChange={(e) => handleCritChange(item.key as keyof typeof critValues, Number(e.target.value))} 
+                                />
                             </div>
                         ))}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-input)', padding: '8px 12px', borderRadius: '6px' }}>
@@ -165,8 +172,15 @@ export default function StatCalculatorPage() {
                         ].map(item => (
                             <div key={item.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-input)', padding: '8px 12px', borderRadius: '6px' }}>
                                 <span style={{ fontSize: '13px', color: item.key === 'currentSwiftStat' ? '#4caf50' : 'var(--text-secondary)', fontWeight: item.key === 'currentSwiftStat' ? 'bold' : 'normal' }}>{item.label}</span>
-                                <input type="number" step="0.01" className="price-input" style={{ width: '60px', background: 'transparent', border: 'none', color: '#fff', textAlign: 'right', fontWeight: 'bold' }}
-                                       value={swiftValues[item.key as keyof typeof swiftValues] || ''} placeholder="0" onChange={(e) => handleSwiftChange(item.key as keyof typeof swiftValues, Number(e.target.value))} />
+                                <input 
+                                    type="number" 
+                                    step="0.01" 
+                                    className="price-input" 
+                                    style={{ width: '60px', background: 'transparent', border: 'none', color: '#fff', textAlign: 'right', fontWeight: 'bold' }}
+                                    value={swiftValues[item.key as keyof typeof swiftValues] || ''} 
+                                    placeholder="0" 
+                                    onChange={(e) => handleSwiftChange(item.key as keyof typeof swiftValues, Number(e.target.value))} 
+                                />
                             </div>
                         ))}
                     </div>

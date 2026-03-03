@@ -21,7 +21,7 @@ public class MarketPriceScheduler {
 
     // 1시간마다 실행 (cron 표현식: 초 분 시 일 월 요일)
     // 테스트를 위해 일단 '1분마다' 실행되도록 설정함 (0 * * * * *) -> 테스트 후 "0 0 * * * *"로 변경 예정
-    @Scheduled(cron = "0 * * * * *")
+    @Scheduled(cron = "0 0 * * * *")
     public void runJob() {
         try {
             log.info("⏰ [Scheduler] 시세 수집 배치를 실행합니다.");

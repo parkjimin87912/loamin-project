@@ -1,6 +1,10 @@
 package dev.j2m2n.backendserver.configs;
 
 import dev.j2m2n.backendserver.dtos.LostArkMarketItemDto;
+import dev.j2m2n.backendserver.entities.ItemMeta;
+import dev.j2m2n.backendserver.entities.MarketPriceHistory;
+import dev.j2m2n.backendserver.repositories.ItemMetaRepository;
+import dev.j2m2n.backendserver.repositories.MarketPriceHistoryRepository;
 import dev.j2m2n.backendserver.services.LostArkApiService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +18,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -22,8 +28,9 @@ import java.util.List;
 public class MarketDataBatchConfig {
 
     private final LostArkApiService lostArkApiService;
+    private final MarketPriceHistoryRepository historyRepository;
+    private final ItemMetaRepository itemMetaRepository;
 
-    // 배치 Job 생성
     @Bean
     public Job marketDataJob(JobRepository jobRepository, Step fetchMarketDataStep) {
         return new JobBuilder("marketDataJob", jobRepository)
@@ -31,28 +38,42 @@ public class MarketDataBatchConfig {
                 .build();
     }
 
-    // 배치 Step 생성
     @Bean
     public Step fetchMarketDataStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
         return new StepBuilder("fetchMarketDataStep", jobRepository)
                 .tasklet((contribution, chunkContext) -> {
-                    log.info(">>> 로스트아크 마켓 데이터 수집 시작");
+                    log.info(">>> 로스트아크 마켓 데이터 수집 시작 (3티어 & 4티어 싹 다 수집!)");
+                    LocalDateTime now = LocalDateTime.now();
+                    List<MarketPriceHistory> historiesToSave = new ArrayList<>();
 
-                    // 1. 일반 재련 재료 (50010) 수집
-                    List<LostArkMarketItemDto> items = lostArkApiService.searchItems(50010, null, null, null);
+                    // 🌟 싹 다 긁어오기 위해 수집할 티어를 배열로 지정
+                    int[] targetTiers = {3, 4};
 
-                    // 🌟 2. 재련 보조 재료 (50020 - 책, 숨결) 수집 추가!
-                    List<LostArkMarketItemDto> subItems = lostArkApiService.searchItems(50020, null, null, null);
+                    for (int tier : targetTiers) {
+                        log.info(">>> [티어 {}] 재련 재료 수집 중...", tier);
 
-                    // 두 리스트를 하나로 합치기
-                    items.addAll(subItems);
+                        // 1. 일반 재련 재료 (50010) 수집
+                        List<LostArkMarketItemDto> items = lostArkApiService.searchItems(50010, null, tier, null);
+                        for (LostArkMarketItemDto itemDto : items) {
+                            ItemMeta itemMeta = itemMetaRepository.findByItemName(itemDto.getName())
+                                    .orElseGet(() -> itemMetaRepository.save(new ItemMeta(itemDto.getName(), itemDto.getGrade(), 50010)));
 
-                    log.info(">>> 수집된 총 아이템 개수: {}", items.size());
+                            historiesToSave.add(new MarketPriceHistory(itemMeta, itemDto.getMinPrice(), 0, now));
+                        }
 
-                    // (DB 저장 로직이 있다면 여기서 items 리스트를 통째로 저장하시면 됩니다)
-                    for (LostArkMarketItemDto item : items) {
-                        log.info("아이템: {} (최저가: {} G)", item.getName(), item.getMinPrice());
+                        // 2. 재련 보조 재료 (50020) 수집
+                        List<LostArkMarketItemDto> subItems = lostArkApiService.searchItems(50020, null, tier, null);
+                        for (LostArkMarketItemDto itemDto : subItems) {
+                            ItemMeta itemMeta = itemMetaRepository.findByItemName(itemDto.getName())
+                                    .orElseGet(() -> itemMetaRepository.save(new ItemMeta(itemDto.getName(), itemDto.getGrade(), 50020)));
+
+                            historiesToSave.add(new MarketPriceHistory(itemMeta, itemDto.getMinPrice(), 0, now));
+                        }
                     }
+
+                    // 3. 수집된 모든 데이터(3티어 + 4티어)를 한 번에 DB에 저장
+                    historyRepository.saveAll(historiesToSave);
+                    log.info(">>> 총 {}건의 시세 데이터가 DB에 저장되었습니다.", historiesToSave.size());
 
                     return RepeatStatus.FINISHED;
                 }, transactionManager)

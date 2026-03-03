@@ -12,26 +12,18 @@ export default function ToolsHeader() {
         { name: '아비도스 제작', path: '/tools/craft' },
         { name: '경매 계산기', path: '/tools/auction' },
         // 🌟 여기에 새 메뉴 탭 추가!
-        { name: '스탯 계산기 (뭉가/음돌)', path: '/tools/stat-calc' },
+        { name: '스탯 계산기', path: '/tools/stat-calc' },
     ];
 
     return (
-        <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border-color)', marginBottom: '30px', display: 'flex', gap: '20px', overflowX: 'auto' }}>
+        <div className="tools-header-container">
             {tabs.map(tab => {
                 const isActive = currentPath.startsWith(tab.path);
                 return (
                     <span
                         key={tab.path}
                         onClick={() => navigate(tab.path)}
-                        style={{
-                            color: isActive ? '#fff' : 'var(--text-secondary)',
-                            fontWeight: isActive ? 'bold' : 'normal',
-                            fontSize: '15px',
-                            borderBottom: isActive ? '2px solid var(--text-accent)' : 'none',
-                            paddingBottom: '19px',
-                            cursor: 'pointer',
-                            whiteSpace: 'nowrap'
-                        }}
+                        className={`tools-tab ${isActive ? 'active' : ''}`}
                     >
                         {tab.name}
                     </span>

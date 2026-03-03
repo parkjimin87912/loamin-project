@@ -231,7 +231,7 @@ export default function AbydosPage() {
             {/* 상단 탭 */}
             <ToolsHeader />
 
-            <div style={{ paddingBottom: '50px' }}>
+            <div style={{ paddingBottom: '50px', minWidth: 0 }}>
                 {/* 설정 박스 */}
                 <div className="content-card" style={{ marginBottom: '20px', padding: '20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px', fontSize:'16px', fontWeight:'bold', color:'#fff' }}>⚙️ 설정</div>
@@ -286,22 +286,26 @@ export default function AbydosPage() {
                 {/* 재료 가격 입력 */}
                 <div className="content-card" style={{ marginBottom: '20px' }}>
                     <div className="card-header"><span className="card-title">💰 생활 재료 가격 (100개 단위)</span></div>
-                    {/* 판매 아이템 (일반/상급 동시 표시) */}
-                    <div style={{ background: 'var(--bg-input)', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid var(--border-color)', display: 'flex', gap: '30px', flexWrap: 'wrap' }}>
+
+                    {/* 🌟 판매 아이템 (일반/상급 동시 표시) - 반응형 클래스 적용 */}
+                    <div className="sell-items-wrapper">
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#4dabf7' }}>💎 판매 아이템 (필수)</div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                            <span style={{ color: '#fff', fontSize: '13px' }}>🟠 아비도스 융화 재료</span>
-                            <input type="number" className="price-input" value={targetPriceNormal} onChange={(e) => setTargetPriceNormal(Number(e.target.value))} />
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                            <span style={{ color: '#a970ff', fontSize: '13px' }}>🟣 상급 아비도스 융화 재료</span>
-                            <input type="number" className="price-input" value={targetPriceAdvanced} onChange={(e) => setTargetPriceAdvanced(Number(e.target.value))} />
+                        <div className="sell-items-group">
+                            <div className="sell-item-row">
+                                <span style={{ color: '#fff', fontSize: '13px' }}>🟠 아비도스 융화 재료</span>
+                                <input type="number" className="price-input" style={{ width: '70px', textAlign: 'right' }} value={targetPriceNormal} onChange={(e) => setTargetPriceNormal(Number(e.target.value))} />
+                            </div>
+                            <div className="sell-item-row">
+                                <span style={{ color: '#a970ff', fontSize: '13px' }}>🟣 상급 아비도스 융화 재료</span>
+                                <input type="number" className="price-input" style={{ width: '70px', textAlign: 'right' }} value={targetPriceAdvanced} onChange={(e) => setTargetPriceAdvanced(Number(e.target.value))} />
+                            </div>
                         </div>
                     </div>
+
                     {/* 재료 그리드 */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+                    <div className="abydos-grid">
                         {lifeMaterials.map((group) => (
                             <div key={group.id} style={{ marginBottom: '10px' }}>
                                 <div style={{ marginBottom: '10px' }}><span style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>{group.icon} {group.name}</span></div>
@@ -322,32 +326,48 @@ export default function AbydosPage() {
                 </div>
 
                 {/* 결과 테이블 */}
+                {/* 결과 테이블 */}
                 <div className="content-card" style={{ marginBottom: '20px' }}>
-                    <div className="card-header"><span className="card-title">📊 제작 이득 순위 (400개 제작 기준)</span></div>
-                    <table className="prob-table">
-                        <thead><tr><th>순위</th><th>제작 방법</th><th>상세 내역</th><th>순이익</th></tr></thead>
-                        <tbody>
-                        {results.map((item, idx) => (
-                            <tr key={item.id} 
-                                onClick={() => setSelectedMethod(item.methodName)}
-                                style={{ cursor: 'pointer', backgroundColor: selectedMethod === item.methodName || (!selectedMethod && idx === 0) ? 'rgba(77, 171, 247, 0.1)' : 'transparent' }}
-                            >
-                                <td style={{ fontWeight: 'bold' }}>{idx + 1}위</td>
-                                <td>
-                                    <div style={{fontWeight:'bold', color: item.type === 'advanced' ? '#a970ff' : '#fff'}}>{item.methodName}</div>
-                                    <div style={{fontSize:'11px', color:'#aaa', marginTop:'4px'}}>예상 생산량: {item.totalExpectedOutput.toFixed(1)}개</div>
-                                </td>
-                                <td style={{ fontSize: '12px', color: '#ccc' }}>
-                                    <div>총 매출: {Math.round(item.netIncome).toLocaleString()} G (수수료 제외)</div>
-                                    <div style={{color:'#ef5350'}}>총 비용: -{Math.round(item.totalCost).toLocaleString()} G</div>
-                                </td>
-                                <td style={{ fontWeight: 'bold', color: item.profit > 0 ? '#66bb6a' : '#ef5350', fontSize:'15px' }}>
-                                    {item.profit > 0 ? '▲' : '▼'} {item.profit.toLocaleString()} G
-                                </td>
+                    <div className="card-header">
+                        <span className="card-title">📊 제작 이득 순위 (400개 제작 기준)</span>
+                    </div>
+                    <div className="table-container">
+                        <table className="prob-table">
+                            <thead>
+                            <tr>
+                                <th>순위</th>
+                                <th>제작 방법</th>
+                                <th>상세 내역</th>
+                                <th>순이익</th>
                             </tr>
-                        ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                            {results.map((item, idx) => (
+                                <tr
+                                    key={item.id}
+                                    onClick={() => setSelectedMethod(item.methodName)}
+                                    style={{
+                                        cursor: 'pointer',
+                                        backgroundColor: selectedMethod === item.methodName || (!selectedMethod && idx === 0) ? 'rgba(77, 171, 247, 0.1)' : 'transparent'
+                                    }}
+                                >
+                                    <td data-label="순위" style={{ fontWeight: 'bold' }}>{idx + 1}위</td>
+                                    <td data-label="제작 방법">
+                                        <div style={{fontWeight:'bold', color: item.type === 'advanced' ? '#a970ff' : '#fff'}}>{item.methodName}</div>
+                                        <div style={{fontSize:'11px', color:'#aaa', marginTop:'4px'}}>예상 생산량: {item.totalExpectedOutput.toFixed(1)}개</div>
+                                    </td>
+                                    <td data-label="상세 내역" style={{ fontSize: '12px', color: '#ccc' }}>
+                                        <div>총 매출: {Math.round(item.netIncome).toLocaleString()} G</div>
+                                        <div style={{color:'#ef5350'}}>총 비용: -{Math.round(item.totalCost).toLocaleString()} G</div>
+                                    </td>
+                                    <td data-label="순이익" style={{ fontWeight: 'bold', color: item.profit > 0 ? '#66bb6a' : '#ef5350', fontSize:'15px' }}>
+                                        {item.profit > 0 ? '▲' : '▼'} {item.profit.toLocaleString()} G
+                                    </td>
+                                </tr>
+                            ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 {/* 🌟 상세 내역 섹션 */}
@@ -362,7 +382,7 @@ export default function AbydosPage() {
                         <div style={{ margin: '20px', padding: '20px', background: 'rgba(30, 30, 30, 0.5)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                             <div style={{ marginBottom: '15px', fontWeight: 'bold', fontSize: '16px', color: '#fff' }}>⚖️ 판매 전략 비교 (재료 보유 시)</div>
                             
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                            <div className="abydos-detail-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
                                 {/* Case 1: 재료 판매 */}
                                 <div style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '15px', borderRadius: '8px', border: detailData.diff < 0 ? '1px solid #66bb6a' : '1px solid transparent' }}>
                                     <div style={{ fontSize: '14px', color: '#aaa', marginBottom: '5px' }}>📦 재료 그대로 판매</div>
@@ -386,7 +406,7 @@ export default function AbydosPage() {
                             </div>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', margin: '20px' }}>
+                        <div className="abydos-detail-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', margin: '20px' }}>
                             {/* 비용 상세 */}
                             <div style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '15px', borderRadius: '8px' }}>
                                 <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#ef5350', marginBottom: '10px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '5px' }}>

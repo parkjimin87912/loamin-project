@@ -130,8 +130,9 @@ export default function MarketPage() {
         <div className="container">
             <MarketCategoryHeader />
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            {/* 🌟 서브 탭 및 필터 영역 (반응형 수정) */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: 1 }}>
                     {currentTabs.length > 0 && currentTabs.map(tab => (
                         <button
                             key={tab}
@@ -140,7 +141,8 @@ export default function MarketPage() {
                                 padding: '8px 16px', borderRadius: '20px', border: 'none', fontWeight: 'bold', cursor: 'pointer',
                                 background: activeSubTab === tab ? 'var(--primary-color)' : 'var(--bg-input)',
                                 color: activeSubTab === tab ? '#fff' : 'var(--text-secondary)',
-                                transition: 'all 0.2s'
+                                transition: 'all 0.2s',
+                                whiteSpace: 'nowrap'
                             }}
                         >
                             {tab}
@@ -162,64 +164,86 @@ export default function MarketPage() {
                 )}
             </div>
 
-            <section className="content-card" style={{ padding: '0', overflow: 'hidden', minHeight: '400px' }}>
+            {/* 🌟 overflow: hidden 제거하여 스크롤바 잘림 방지 */}
+            <section className="content-card" style={{ padding: '0', minHeight: '400px' }}>
                 <div style={{ padding: '20px', borderBottom: '1px solid var(--border-color)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                     <span className="card-title">{title}</span>
                     {loading && <span style={{ fontSize:'13px', color:'var(--text-accent)' }}>🔄 데이터 불러오는 중...</span>}
                 </div>
 
-                <table className="prob-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                    <tr style={{ background: 'var(--bg-header)', color: 'var(--text-secondary)', fontSize: '13px' }}>
-                        <th style={{ textAlign: 'left', paddingLeft: '30px' }}>아이템</th>
-                        <th>등급</th>
-                        <th>묶음</th>
-                        <th>최저가</th>
-                        <th>최근 거래가</th>
-                        <th>전일 평균가</th>
-                        <th>등락률</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {loading ? (
-                        <tr><td colSpan={7} style={{ padding: '60px', textAlign: 'center', color: '#aaa' }}><div className="loading-spinner" style={{ margin: '0 auto 15px' }}></div>로스트아크 거래소 시세를 가져오고 있습니다...</td></tr>
-                    ) : error ? (
-                        <tr><td colSpan={7} style={{ padding: '60px', textAlign: 'center', color: '#ef5350' }}>데이터를 불러오지 못했습니다.</td></tr>
-                    ) : items.length === 0 ? (
-                        <tr><td colSpan={7} style={{ padding: '60px', textAlign: 'center', color: '#666' }}>표시할 아이템이 없습니다.</td></tr>
-                    ) : (
-                        items.map((item) => {
-                            const bgColor = getGradeBackgroundColor(item.grade);
-                            return (
-                                <tr
-                                    key={item.id}
-                                    style={{
-                                        cursor: 'pointer',
-                                        transition: 'background 0.2s',
-                                        background: bgColor,
-                                        borderBottom: '1px solid rgba(255,255,255,0.05)'
-                                    }}
-                                    className="market-row"
-                                    onClick={() => navigate(`/market/detail/${item.name}`)}
-                                >
-                                    <td style={{ textAlign: 'left', padding: '15px 30px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <div style={{ width:'40px', height:'40px', borderRadius:'8px', background:'rgba(255,255,255,0.05)', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
-                                            {item.icon && item.icon.startsWith('http') ? <img src={item.icon} alt={item.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <span style={{ fontSize:'20px' }}>{item.icon}</span>}
-                                        </div>
-                                        <span style={{ fontWeight: 'bold', color: getGradeColor(item.grade) }}>{item.name}</span>
-                                    </td>
-                                    <td style={{ color: getGradeColor(item.grade), fontSize:'13px' }}>{item.grade}</td>
-                                    <td style={{ color: '#aaa', fontSize:'13px' }}>{item.bundle}개</td>
-                                    <td style={{ fontWeight: 'bold', color: '#fff' }}>{item.minPrice.toLocaleString()} <span style={{fontSize:'11px', color:'#aaa'}}>G</span></td>
-                                    <td style={{ fontWeight: 'bold', color: '#e0e0e0' }}>{item.recentPrice.toLocaleString()} <span style={{fontSize:'11px', color:'#aaa'}}>G</span></td>
-                                    <td style={{ color: '#aaa' }}>{item.avgPrice.toLocaleString()} <span style={{fontSize:'11px'}}>G</span></td>
-                                    <td style={{ fontWeight: 'bold', color: item.changeRate > 0 ? '#ef5350' : item.changeRate < 0 ? '#42a5f5' : '#aaa' }}>{item.changeRate > 0 ? '+' : ''}{item.changeRate}%</td>
-                                </tr>
-                            );
-                        })
-                    )}
-                    </tbody>
-                </table>
+                {/* 🌟 테이블 컨테이너 (가로 스크롤 제거, 카드 뷰 전환) */}
+                <div className="table-container" style={{ width: '100%' }}>
+                    <table className="prob-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                        <tr style={{ background: 'var(--bg-header)', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                            <th style={{ textAlign: 'left', paddingLeft: '30px', whiteSpace: 'nowrap' }}>아이템</th>
+                            <th style={{ whiteSpace: 'nowrap' }}>등급</th>
+                            <th style={{ whiteSpace: 'nowrap' }}>묶음</th>
+                            <th style={{ whiteSpace: 'nowrap' }}>최저가</th>
+                            <th style={{ whiteSpace: 'nowrap' }}>최근 거래가</th>
+                            <th style={{ whiteSpace: 'nowrap' }}>전일 평균가</th>
+                            <th style={{ whiteSpace: 'nowrap' }}>등락률</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {loading ? (
+                            <tr><td colSpan={7} style={{ padding: '60px', textAlign: 'center', color: '#aaa' }}><div className="loading-spinner" style={{ margin: '0 auto 15px' }}></div>로스트아크 거래소 시세를 가져오고 있습니다...</td></tr>
+                        ) : error ? (
+                            <tr><td colSpan={7} style={{ padding: '60px', textAlign: 'center', color: '#ef5350' }}>데이터를 불러오지 못했습니다.</td></tr>
+                        ) : items.length === 0 ? (
+                            <tr><td colSpan={7} style={{ padding: '60px', textAlign: 'center', color: '#666' }}>표시할 아이템이 없습니다.</td></tr>
+                        ) : (
+                            items.map((item) => {
+                                const bgColor = getGradeBackgroundColor(item.grade);
+                                return (
+                                    <tr
+                                        key={item.id}
+                                        style={{
+                                            cursor: 'pointer',
+                                            transition: 'background 0.2s',
+                                            background: bgColor,
+                                            borderBottom: '1px solid rgba(255,255,255,0.05)'
+                                        }}
+                                        className="market-row"
+                                        onClick={() => navigate(`/market/detail/${item.name}`)}
+                                    >
+                                        <td data-label="아이템" style={{ textAlign: 'left', padding: '15px 30px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <div style={{ width:'40px', height:'40px', borderRadius:'8px', background:'rgba(255,255,255,0.05)', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', flexShrink: 0 }}>
+                                                {item.icon && item.icon.startsWith('http') ? <img src={item.icon} alt={item.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <span style={{ fontSize:'20px' }}>{item.icon}</span>}
+                                            </div>
+                                            <span style={{ fontWeight: 'bold', color: getGradeColor(item.grade), whiteSpace: 'nowrap' }}>{item.name}</span>
+                                        </td>
+                                        <td data-label="등급" style={{ color: getGradeColor(item.grade), fontSize:'13px', whiteSpace: 'nowrap' }}>{item.grade}</td>
+                                        <td data-label="묶음" style={{ color: '#aaa', fontSize:'13px', whiteSpace: 'nowrap' }}>{item.bundle}개</td>
+                                        <td data-label="최저가" style={{ fontWeight: 'bold', color: '#fff', whiteSpace: 'nowrap' }}>
+                                            {item.minPrice > 0 ? (
+                                                <span>{item.minPrice.toLocaleString()} <span style={{fontSize:'11px', color:'#aaa'}}>G</span></span>
+                                            ) : (
+                                                <span style={{color:'#666'}}>-</span>
+                                            )}
+                                        </td>
+                                        <td data-label="최근 거래가" style={{ fontWeight: 'bold', color: '#e0e0e0', whiteSpace: 'nowrap' }}>
+                                            {item.recentPrice > 0 ? (
+                                                <span>{item.recentPrice.toLocaleString()} <span style={{fontSize:'11px', color:'#aaa'}}>G</span></span>
+                                            ) : (
+                                                <span style={{color:'#666'}}>-</span>
+                                            )}
+                                        </td>
+                                        <td data-label="전일 평균가" style={{ color: '#aaa', whiteSpace: 'nowrap' }}>
+                                            {item.avgPrice > 0 ? (
+                                                <span>{item.avgPrice.toLocaleString()} <span style={{fontSize:'11px'}}>G</span></span>
+                                            ) : (
+                                                <span style={{color:'#666'}}>-</span>
+                                            )}
+                                        </td>
+                                        <td data-label="등락률" style={{ fontWeight: 'bold', color: item.changeRate > 0 ? '#ef5350' : item.changeRate < 0 ? '#42a5f5' : '#aaa', whiteSpace: 'nowrap' }}>{item.changeRate > 0 ? '+' : ''}{item.changeRate}%</td>
+                                    </tr>
+                                );
+                            })
+                        )}
+                        </tbody>
+                    </table>
+                </div>
             </section>
         </div>
     );
