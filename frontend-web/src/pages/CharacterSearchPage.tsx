@@ -584,6 +584,14 @@ export default function CharacterSearchPage() {
                     const titleText = typeof titleObj === 'string' ? stripHtml(titleObj) : "";
                     const contentLines = extractText(contentObj);
 
+                    if (titleText.includes("상급 재련")) {
+                        const contentText = typeof contentObj === 'string' ? stripHtml(contentObj) : "";
+                        const match = contentText.match(/(\d+)\s*단계/);
+                        if (match) {
+                            advancedReforge = Math.max(advancedReforge, parseInt(match[1], 10));
+                        }
+                    }
+
                     if (titleText.includes("팔찌 효과")) {
                         const rawStr = typeof contentObj === 'string' ? contentObj : "";
                         const lines = rawStr.split(/<BR>|<br>/gi).map(s => s.trim()).filter(s => s);
@@ -1778,10 +1786,10 @@ export default function CharacterSearchPage() {
                                                         </div>
                                                         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '40px' }}>
                                                             <div style={{fontSize: '11px', color: '#aaa'}}>{eq.type}</div>
-                                                            <div style={{ fontSize: '13px', fontWeight: 'bold', color: getGradeColor(eq.grade), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                                <span>{eq.name}</span>
+                                                            <div style={{ fontSize: '13px', fontWeight: 'bold', color: getGradeColor(eq.grade), display: 'flex', alignItems: 'center', gap: '6px', width: '100%' }}>
+                                                                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>{eq.name}</span>
                                                                 {advancedReforge > 0 && (
-                                                                    <span style={{ fontSize: '11px', color: '#ffb74d', background: 'rgba(255, 183, 77, 0.15)', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', flexShrink: 0 }}>상재 {advancedReforge}</span>
+                                                                    <span style={{ fontSize: '11px', color: '#ffb74d', background: 'rgba(255, 183, 77, 0.15)', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', flexShrink: 0 }}>+{advancedReforge}</span>
                                                                 )}
                                                             </div>
                                                         </div>
@@ -1860,7 +1868,7 @@ export default function CharacterSearchPage() {
                                         보석 <span style={{ fontSize: '13px', color: '#aaa', fontWeight: 'normal' }}>{getGemSummary()}</span>
                                     </h3>
                                     {character.gems.length > 0 ? (
-                                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(40px, 1fr))', gap: '5px'}}>
+                                        <div className="gem-grid">
                                             {character.gems
                                                 .sort((a, b) => {
                                                     const isDmgA = isDamageGem(a);

@@ -540,7 +540,13 @@ input:checked + .slider:before { transform: translateX(20px); }
 }
 
 
-/* --- 🌟 캐릭터 검색 페이지 레이아웃 (PC) --- */
+/* --- 🌟 캐릭터 검색 페이지 메인 레이아웃 (PC) --- */
+.character-detail-grid {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
 .left-column {
   width: 390px;
   flex-shrink: 0;
@@ -736,6 +742,13 @@ input:checked + .slider:before { transform: translateX(20px); }
   display: flex;
   align-items: center;
   gap: 15px;
+}
+
+/* 🌟 보석 그리드 (PC: 11개 고정) */
+.gem-grid {
+  display: grid;
+  grid-template-columns: repeat(11, 1fr);
+  gap: 5px;
 }
 
 /* --- 반응형 스타일 (Mobile/Tablet) --- */
@@ -1004,6 +1017,12 @@ input:checked + .slider:before { transform: translateX(20px); }
 
   .ark-grid-gem-list {
     grid-template-columns: 1fr; /* 보석 목록 1열 배치 */
+  }
+
+  /* 🌟 보석 그리드 반응형 */
+  .gem-grid {
+    grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+    gap: 8px;
   }
 }
 /* --- 시세 차트 반응형 (모바일) --- */
