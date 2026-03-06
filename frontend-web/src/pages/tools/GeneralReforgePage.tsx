@@ -54,10 +54,10 @@ export default function GeneralReforgePage() {
             try {
                 // 💡 중요: 재련 재료(50010)와 보조 재료(50020)를 모두 가져오도록 Promise.all 사용!
                 const [matResponse, subMatResponse] = await Promise.all([
-                    axios.get('http://localhost:8080/api/v1/market/items', {
+                    axios.get('/api/v1/market/items', {
                         params: { category: 'reforge', subCategory: '재련 재료', tier: 4 }
                     }),
-                    axios.get('http://localhost:8080/api/v1/market/items', {
+                    axios.get('/api/v1/market/items', {
                         params: { category: 'reforge', subCategory: '재련 보조 재료', tier: 4 }
                     })
                 ]);

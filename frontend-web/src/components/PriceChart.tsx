@@ -34,7 +34,7 @@ export default function PriceChart({ itemName }: Props) {
     };
 
     useEffect(() => {
-        axios.get(`http://localhost:8080/api/v1/market/history?itemName=${itemName}`)
+        axios.get(`/api/v1/market/history?itemName=${itemName}`)
             .then((response) => {
                 const formattedData = response.data.map((item: any) => ({
                     ...item,
@@ -44,7 +44,7 @@ export default function PriceChart({ itemName }: Props) {
             })
             .catch(err => console.error("히스토리 로딩 실패:", err));
 
-        axios.get(`http://localhost:8080/api/v1/market/predict?itemName=${itemName}`)
+        axios.get(`/api/v1/market/predict?itemName=${itemName}`)
             .then((response) => {
                 setPrediction(response.data);
             })

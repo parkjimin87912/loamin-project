@@ -31,7 +31,7 @@ export default function CalendarPage() {
 
     const fetchCalendar = async () => {
         try {
-            const response = await axios.get('http://localhost:8080/api/v1/calendar');
+            const response = await axios.get('/api/v1/calendar');
             if (response.data) {
                 const now = new Date();
                 const kstOffset = 9 * 60 * 60 * 1000;

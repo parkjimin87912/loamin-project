@@ -311,7 +311,7 @@ export default function CharacterSearchPage() {
         setActiveTab('전체');
 
         try {
-            const response = await axios.get(`http://localhost:8080/api/v1/characters/${name}`);
+            const response = await axios.get(`/api/v1/characters/${name}`);
             if (response.data) {
                 setCharacter(response.data);
             } else {

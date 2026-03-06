@@ -30,10 +30,10 @@ export default function AdvancedReforgePage() {
         const fetchMarketPrices = async () => {
             try {
                 const [matResponse, subMatResponse] = await Promise.all([
-                    axios.get('http://localhost:8080/api/v1/market/items', {
+                    axios.get('/api/v1/market/items', {
                         params: { category: 'reforge', subCategory: '재련 재료', tier: 4 }
                     }),
-                    axios.get('http://localhost:8080/api/v1/market/items', {
+                    axios.get('/api/v1/market/items', {
                         params: { category: 'reforge', subCategory: '재련 보조 재료', tier: 4 }
                     })
                 ]);

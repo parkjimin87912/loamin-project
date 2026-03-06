@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+// import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import ToolsHeader from '../../components/ToolsHeader';
 import '../../App.css';
@@ -14,7 +14,7 @@ interface MaterialGroup {
 }
 
 export default function AbydosPage() {
-    const navigate = useNavigate();
+    // const navigate = useNavigate();
 
     // --- [상태 관리] ---
     const [targetPriceNormal, setTargetPriceNormal] = useState(0); // 일반 아비도스 가격
@@ -39,10 +39,10 @@ export default function AbydosPage() {
             try {
                 // 1. 융화 재료 가격 (일반/상급 모두 조회)
                 const [matResponse, subMatResponse] = await Promise.all([
-                    axios.get('http://localhost:8080/api/v1/market/items', {
+                    axios.get('/api/v1/market/items', {
                         params: { category: 'reforge', subCategory: '재련 재료', tier: 4 }
                     }),
-                    axios.get('http://localhost:8080/api/v1/market/items', {
+                    axios.get('/api/v1/market/items', {
                         params: { category: 'reforge', subCategory: '재련 보조 재료', tier: 4 }
                     })
                 ]);
@@ -72,7 +72,7 @@ export default function AbydosPage() {
 
                 await Promise.all(categories.map(async (cat) => {
                     try {
-                        const response = await axios.get('http://localhost:8080/api/v1/market/items', {
+                        const response = await axios.get('/api/v1/market/items', {
                             params: { category: 'life', subCategory: cat.sub }
                         });
                         if (Array.isArray(response.data)) {

@@ -82,7 +82,7 @@ export default function MarketPage() {
                     params.subCategory = activeSubTab;
                 }
 
-                const response = await axios.get(`http://localhost:8080/api/v1/market/items`, { params });
+                const response = await axios.get(`/api/v1/market/items`, { params });
 
                 if (Array.isArray(response.data)) {
                     setItems(response.data);

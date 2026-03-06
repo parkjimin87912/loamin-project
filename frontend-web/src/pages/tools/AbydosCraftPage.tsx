@@ -20,7 +20,7 @@ export default function AbydosCraftPage() {
     useEffect(() => {
         const fetchMarketPrices = async () => {
             try {
-                const response = await axios.get('http://localhost:8080/api/v1/market/items', {
+                const response = await axios.get('/api/v1/market/items', {
                     params: { category: 'life', subCategory: '벌목' }
                 });
 
